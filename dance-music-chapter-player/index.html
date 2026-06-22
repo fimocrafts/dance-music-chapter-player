@@ -1,0 +1,1850 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dance Music Chapter Player</title>
+    <style>
+        :root {
+            --bg-dark: #0a0a12;
+            --bg-surface: #12121f;
+            --bg-card: #1a1a2e;
+            --bg-hover: #222240;
+            --accent: #e94560;
+            --accent-glow: rgba(233, 69, 96, 0.3);
+            --accent2: #0f3460;
+            --green: #16c79a;
+            --green-glow: rgba(22, 199, 154, 0.3);
+            --yellow: #f5c518;
+            --text: #e8e8f0;
+            --text-dim: #8888aa;
+            --radius: 8px;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            background: var(--bg-dark);
+            color: var(--text);
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        #app {
+            max-width: 1280px;
+            margin: 0 auto;
+            padding: 16px 20px;
+        }
+
+        /* Header */
+        header {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            padding: 12px 0 20px;
+            flex-wrap: wrap;
+        }
+
+        header h1 {
+            font-size: 1.4rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, var(--accent), #ff6b8a);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            white-space: nowrap;
+        }
+
+        .search-bar {
+            flex: 1;
+            display: flex;
+            gap: 8px;
+            min-width: 280px;
+        }
+
+        .search-bar input {
+            flex: 1;
+            padding: 10px 16px;
+            background: var(--bg-card);
+            border: 1px solid #333;
+            border-radius: var(--radius);
+            color: var(--text);
+            font-size: 0.95rem;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        .search-bar input:focus {
+            border-color: var(--accent);
+            box-shadow: 0 0 0 2px var(--accent-glow);
+        }
+
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: var(--radius);
+            cursor: pointer;
+            font-size: 0.9rem;
+            font-weight: 600;
+            transition: all 0.2s;
+        }
+
+        .btn-primary {
+            background: var(--accent);
+            color: white;
+        }
+
+        .btn-primary:hover { background: #d63851; transform: translateY(-1px); }
+
+        .btn-secondary {
+            background: var(--bg-card);
+            color: var(--text);
+            border: 1px solid #444;
+        }
+
+        .btn-secondary:hover { background: var(--bg-hover); }
+
+        .btn-icon {
+            width: 42px;
+            padding: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.1rem;
+        }
+
+        /* Settings Panel */
+        .settings-panel {
+            background: var(--bg-card);
+            border: 1px solid #333;
+            border-radius: var(--radius);
+            padding: 16px 20px;
+            margin-bottom: 16px;
+            display: none;
+            gap: 12px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .settings-panel.open { display: flex; }
+
+        .settings-panel label { color: var(--text-dim); font-size: 0.85rem; }
+
+        .settings-panel input {
+            padding: 8px 12px;
+            background: var(--bg-dark);
+            border: 1px solid #444;
+            border-radius: 6px;
+            color: var(--text);
+            font-size: 0.9rem;
+            flex: 1;
+            min-width: 200px;
+            outline: none;
+        }
+
+        .settings-panel input:focus { border-color: var(--accent); }
+
+        .api-hint {
+            font-size: 0.8rem;
+            color: var(--text-dim);
+            width: 100%;
+        }
+
+        .api-hint a { color: var(--accent); text-decoration: none; }
+        .api-hint a:hover { text-decoration: underline; }
+
+        /* Search Results */
+        .search-results {
+            display: none;
+            gap: 12px;
+            margin-bottom: 20px;
+            overflow-x: auto;
+            padding: 4px 0;
+        }
+
+        .search-results.open { display: flex; }
+
+        .search-result-card {
+            flex: 0 0 220px;
+            background: var(--bg-card);
+            border-radius: var(--radius);
+            overflow: hidden;
+            cursor: pointer;
+            transition: all 0.2s;
+            border: 2px solid transparent;
+        }
+
+        .search-result-card:hover {
+            border-color: var(--accent);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+        }
+
+        .search-result-card img {
+            width: 100%;
+            aspect-ratio: 16/9;
+            object-fit: cover;
+        }
+
+        .search-result-card .info {
+            padding: 10px 12px;
+        }
+
+        .search-result-card .title {
+            font-size: 0.82rem;
+            font-weight: 600;
+            line-height: 1.3;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+
+        .search-result-card .channel {
+            font-size: 0.75rem;
+            color: var(--text-dim);
+            margin-top: 4px;
+        }
+
+        /* Main Layout */
+        main {
+            display: grid;
+            grid-template-columns: 1fr 340px;
+            gap: 20px;
+            align-items: start;
+        }
+
+        /* Player Section */
+        .player-section {
+            background: var(--bg-surface);
+            border-radius: var(--radius);
+            overflow: hidden;
+        }
+
+        .player-wrapper {
+            position: relative;
+            width: 100%;
+            padding-top: 56.25%;
+            background: #000;
+        }
+
+        .player-wrapper iframe,
+        .player-wrapper #ytplayer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+        }
+
+        .player-placeholder {
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-dim);
+            gap: 12px;
+        }
+
+        .player-placeholder svg {
+            width: 64px;
+            height: 64px;
+            opacity: 0.3;
+        }
+
+        .now-playing {
+            padding: 14px 18px;
+        }
+
+        #videoTitle {
+            font-size: 0.95rem;
+            font-weight: 600;
+            display: block;
+            margin-bottom: 10px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .progress-container {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .progress-bar {
+            flex: 1;
+            height: 6px;
+            background: var(--bg-card);
+            border-radius: 3px;
+            overflow: hidden;
+            cursor: pointer;
+            position: relative;
+        }
+
+        .progress-bar:hover { height: 8px; }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--accent), #ff6b8a);
+            border-radius: 3px;
+            width: 0%;
+            transition: width 0.3s linear;
+        }
+
+        .time-display {
+            font-size: 0.8rem;
+            color: var(--text-dim);
+            font-variant-numeric: tabular-nums;
+            white-space: nowrap;
+        }
+
+        /* Chapter Section */
+        .chapter-section {
+            background: var(--bg-surface);
+            border-radius: var(--radius);
+            padding: 16px;
+            max-height: calc(100vh - 120px);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .chapter-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 12px;
+        }
+
+        .chapter-header h2 {
+            font-size: 1.1rem;
+            font-weight: 700;
+        }
+
+        .chapter-settings {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+            flex-wrap: wrap;
+            margin-bottom: 14px;
+            padding-bottom: 14px;
+            border-bottom: 1px solid #2a2a40;
+        }
+
+        .chapter-settings label {
+            font-size: 0.8rem;
+            color: var(--text-dim);
+        }
+
+        .chapter-settings input,
+        .chapter-settings select {
+            padding: 6px 10px;
+            background: var(--bg-card);
+            border: 1px solid #444;
+            border-radius: 6px;
+            color: var(--text);
+            font-size: 0.85rem;
+            outline: none;
+        }
+
+        .chapter-settings input:focus,
+        .chapter-settings select:focus {
+            border-color: var(--accent);
+        }
+
+        .chapter-settings input[type="number"] { width: 65px; }
+
+        .chapter-settings select { cursor: pointer; }
+
+        .btn-generate {
+            background: linear-gradient(135deg, var(--accent), #c73a52);
+            color: white;
+            padding: 7px 14px;
+            font-size: 0.82rem;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.2s;
+            white-space: nowrap;
+        }
+
+        .btn-generate:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 2px 12px var(--accent-glow);
+        }
+
+        .btn-generate:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        /* Chapter List */
+        .chapter-list {
+            flex: 1;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            scrollbar-width: thin;
+            scrollbar-color: #333 transparent;
+        }
+
+        .chapter-list::-webkit-scrollbar { width: 4px; }
+        .chapter-list::-webkit-scrollbar-track { background: transparent; }
+        .chapter-list::-webkit-scrollbar-thumb { background: #444; border-radius: 2px; }
+
+        .chapter-btn {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 16px 14px;
+            background: var(--bg-card);
+            border: 2px solid transparent;
+            border-radius: var(--radius);
+            cursor: pointer;
+            transition: all 0.15s;
+            text-align: left;
+            color: var(--text);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .chapter-btn:hover {
+            background: var(--bg-hover);
+            border-color: #444;
+        }
+
+        .chapter-btn.active {
+            border-color: var(--green);
+            background: rgba(22, 199, 154, 0.08);
+            box-shadow: 0 0 15px var(--green-glow);
+        }
+
+        .chapter-btn.active .chapter-index {
+            background: var(--green);
+            color: var(--bg-dark);
+        }
+
+        .chapter-progress-bg {
+            position: absolute;
+            top: 0;
+            left: 0;
+            height: 100%;
+            background: rgba(22, 199, 154, 0.06);
+            transition: width 0.3s linear;
+            pointer-events: none;
+        }
+
+        .chapter-index {
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            background: #333;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.75rem;
+            font-weight: 700;
+            flex-shrink: 0;
+            z-index: 1;
+            transition: all 0.2s;
+        }
+
+        .chapter-info {
+            flex: 1;
+            min-width: 0;
+            z-index: 1;
+        }
+
+        .chapter-name-row {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .chapter-name {
+            font-size: 0.88rem;
+            font-weight: 600;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .chapter-name-input {
+            font-size: 0.88rem;
+            font-weight: 600;
+            background: var(--bg-dark);
+            border: 1px solid var(--accent);
+            border-radius: 4px;
+            color: var(--text);
+            padding: 2px 6px;
+            flex: 1;
+            min-width: 0;
+            outline: none;
+        }
+
+        .chapter-time {
+            font-size: 0.75rem;
+            color: var(--text-dim);
+            font-variant-numeric: tabular-nums;
+            margin-top: 3px;
+        }
+
+        .chapter-action-btn {
+            width: 26px;
+            height: 26px;
+            border: none;
+            border-radius: 4px;
+            background: rgba(255,255,255,0.08);
+            color: var(--text-dim);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.75rem;
+            transition: all 0.15s;
+            opacity: 0;
+            z-index: 1;
+            flex-shrink: 0;
+        }
+
+        .chapter-btn:hover .chapter-action-btn { opacity: 1; }
+
+        .chapter-action-btn:hover {
+            background: rgba(255,255,255,0.15);
+            color: var(--text);
+        }
+
+        .chapter-action-btn.delete {
+            margin-left: auto;
+        }
+
+        .chapter-action-btn.delete:hover {
+            background: rgba(233, 69, 96, 0.2);
+            color: var(--accent);
+        }
+
+        /* Bottom Controls */
+        .chapter-bottom {
+            margin-top: 12px;
+            padding-top: 12px;
+            border-top: 1px solid #2a2a40;
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .btn-sm {
+            padding: 6px 12px;
+            font-size: 0.78rem;
+            border-radius: 6px;
+            border: 1px solid #444;
+            background: var(--bg-card);
+            color: var(--text-dim);
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+
+        .btn-sm:hover {
+            background: var(--bg-hover);
+            color: var(--text);
+        }
+
+        /* Empty State */
+        .empty-state {
+            text-align: center;
+            padding: 40px 20px;
+            color: var(--text-dim);
+        }
+
+        .empty-state p { margin-top: 8px; font-size: 0.85rem; }
+
+        /* Keyboard shortcut hints */
+        .shortcuts-hint {
+            font-size: 0.72rem;
+            color: var(--text-dim);
+            text-align: center;
+            padding: 10px 0 0;
+            opacity: 0.7;
+        }
+
+        kbd {
+            display: inline-block;
+            padding: 1px 5px;
+            background: var(--bg-card);
+            border: 1px solid #444;
+            border-radius: 3px;
+            font-family: inherit;
+            font-size: 0.7rem;
+        }
+
+        /* Command bar */
+        .command-bar {
+            background: var(--bg-surface);
+            border: 1px solid #333;
+            border-radius: var(--radius);
+            padding: 12px 16px;
+            margin-bottom: 16px;
+        }
+
+        .command-bar-inner {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+
+        .command-bar label {
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: var(--accent);
+            white-space: nowrap;
+        }
+
+        .command-bar input {
+            flex: 1;
+            padding: 9px 14px;
+            background: var(--bg-card);
+            border: 1px solid #444;
+            border-radius: 6px;
+            color: var(--text);
+            font-size: 0.9rem;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        .command-bar input:focus {
+            border-color: var(--accent);
+            box-shadow: 0 0 0 2px var(--accent-glow);
+        }
+
+        .command-bar input::placeholder { color: #555; }
+
+        .command-status {
+            display: none;
+            align-items: center;
+            gap: 10px;
+            margin-top: 10px;
+            padding: 8px 12px;
+            background: var(--bg-card);
+            border-radius: 6px;
+            font-size: 0.83rem;
+        }
+
+        .command-status.active { display: flex; }
+
+        .command-status .status-text {
+            flex: 1;
+            color: var(--green);
+        }
+
+        .command-status .status-text span {
+            color: var(--text-dim);
+            font-variant-numeric: tabular-nums;
+        }
+
+        .command-status .loop-indicator {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--green);
+            animation: pulse-dot 1s ease-in-out infinite;
+            flex-shrink: 0;
+        }
+
+        @keyframes pulse-dot {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.4; transform: scale(0.7); }
+        }
+
+        .btn-stop-cmd {
+            padding: 4px 12px;
+            font-size: 0.78rem;
+            border-radius: 5px;
+            border: 1px solid var(--accent);
+            background: rgba(233, 69, 96, 0.1);
+            color: var(--accent);
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.15s;
+        }
+
+        .btn-stop-cmd:hover {
+            background: rgba(233, 69, 96, 0.25);
+        }
+
+        .command-examples {
+            margin-top: 8px;
+            font-size: 0.73rem;
+            color: var(--text-dim);
+            opacity: 0.7;
+        }
+
+        .command-examples code {
+            background: var(--bg-card);
+            padding: 1px 5px;
+            border-radius: 3px;
+        }
+
+        /* Error banner */
+        .error-banner {
+            display: none;
+            background: rgba(233, 69, 96, 0.12);
+            border: 1px solid var(--accent);
+            border-radius: var(--radius);
+            padding: 14px 18px;
+            margin-bottom: 16px;
+            font-size: 0.88rem;
+            line-height: 1.5;
+        }
+
+        .error-banner.show { display: block; }
+
+        .error-banner strong { color: var(--accent); }
+
+        .error-banner code {
+            background: var(--bg-card);
+            padding: 1px 6px;
+            border-radius: 3px;
+            font-size: 0.82rem;
+        }
+
+        .error-banner .dismiss-error {
+            float: right;
+            background: none;
+            border: none;
+            color: var(--text-dim);
+            cursor: pointer;
+            font-size: 1.1rem;
+            line-height: 1;
+        }
+
+        .error-banner .dismiss-error:hover { color: var(--text); }
+
+        /* Toast notification */
+        .toast {
+            position: fixed;
+            bottom: 24px;
+            left: 50%;
+            transform: translateX(-50%) translateY(80px);
+            background: var(--bg-card);
+            border: 1px solid #444;
+            border-radius: var(--radius);
+            padding: 10px 20px;
+            font-size: 0.85rem;
+            z-index: 1000;
+            opacity: 0;
+            transition: all 0.3s;
+            pointer-events: none;
+        }
+
+        .toast.show {
+            transform: translateX(-50%) translateY(0);
+            opacity: 1;
+        }
+
+        /* Responsive */
+        @media (max-width: 800px) {
+            main {
+                grid-template-columns: 1fr;
+            }
+
+            .chapter-section {
+                max-height: none;
+            }
+
+            header { flex-direction: column; align-items: stretch; }
+            header h1 { text-align: center; }
+        }
+    </style>
+</head>
+<body>
+    <div id="app">
+        <header>
+            <h1>Dance Music Chapter Player</h1>
+            <div class="search-bar">
+                <input type="text" id="urlInput" placeholder="Paste YouTube URL or enter search terms..." autofocus>
+                <button class="btn btn-primary" id="loadBtn">Load</button>
+                <button class="btn btn-secondary btn-icon" id="settingsBtn" title="API settings">&#9881;</button>
+            </div>
+        </header>
+
+        <div class="settings-panel" id="settingsPanel">
+            <label>YouTube API Key:</label>
+            <input type="password" id="apiKeyInput" placeholder="Paste your YouTube Data API v3 key...">
+            <button class="btn btn-primary" id="saveKeyBtn">Save</button>
+            <p class="api-hint">
+                Required for search. Get a free key from the
+                <a href="https://console.cloud.google.com/apis/credentials" target="_blank" rel="noopener">Google Cloud Console</a>
+                &mdash; enable "YouTube Data API v3". Without a key, paste a YouTube URL directly.
+            </p>
+        </div>
+
+        <div class="search-results" id="searchResults"></div>
+
+        <div class="error-banner" id="errorBanner">
+            <button class="dismiss-error" onclick="document.getElementById('errorBanner').classList.remove('show')">&times;</button>
+            <div id="errorContent"></div>
+        </div>
+
+        <div class="command-bar">
+            <div class="command-bar-inner">
+                <label>&gt;_</label>
+                <input type="text" id="commandInput" placeholder="Try: play Build Up 3 times, loop Drop, play Intro then Drop...">
+                <button class="btn btn-primary" id="commandBtn" style="padding:9px 16px">Run</button>
+            </div>
+            <div class="command-status" id="commandStatus">
+                <div class="loop-indicator"></div>
+                <div class="status-text" id="commandStatusText"></div>
+                <button class="btn-stop-cmd" id="stopCommandBtn">Stop</button>
+            </div>
+            <div class="command-examples">
+                Examples: <code>play Drop</code> &middot; <code>play Build Up 3 times</code> &middot; <code>loop Breakdown at 50% speed</code> &middot; <code>play Intro at 0.75x then Drop</code> &middot; <code>pause</code> &middot; <code>stop</code>
+            </div>
+        </div>
+
+        <main>
+            <div class="player-section">
+                <div class="player-wrapper" id="playerWrapper">
+                    <div class="player-placeholder" id="playerPlaceholder">
+                        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M19.615 3.184c-3.604-.246-11.631-.245-15.23 0C.488 3.45.029 5.804 0 12c.029 6.185.484 8.549 4.385 8.816 3.6.245 11.626.246 15.23 0C23.512 20.55 23.971 18.196 24 12c-.029-6.185-.484-8.549-4.385-8.816zM9 16V8l8 4-8 4z"/></svg>
+                        <span>Paste a YouTube URL above to get started</span>
+                    </div>
+                    <div id="ytplayer"></div>
+                </div>
+                <div class="now-playing">
+                    <span id="videoTitle">No video loaded</span>
+                    <div class="progress-container">
+                        <div class="progress-bar" id="progressBar">
+                            <div class="progress-fill" id="progressFill"></div>
+                        </div>
+                        <span class="time-display" id="timeDisplay">0:00 / 0:00</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="chapter-section">
+                <div class="chapter-header">
+                    <h2>Chapters</h2>
+                </div>
+
+                <div class="chapter-settings">
+                    <label>BPM</label>
+                    <input type="number" id="bpmInput" value="128" min="60" max="220" step="1">
+                    <label>Genre</label>
+                    <select id="genreSelect">
+                        <option value="house">House</option>
+                        <option value="techno">Techno</option>
+                        <option value="trance">Trance</option>
+                        <option value="dnb">Drum &amp; Bass</option>
+                        <option value="dubstep">Dubstep</option>
+                        <option value="edm">EDM / Big Room</option>
+                    </select>
+                    <button class="btn-generate" id="generateBtn" disabled>Generate Chapters</button>
+                </div>
+
+                <div class="chapter-list" id="chapterList">
+                    <div class="empty-state">
+                        <p>Load a video to generate chapters</p>
+                    </div>
+                </div>
+
+                <div class="chapter-bottom">
+                    <button class="btn-sm" id="addChapterBtn" title="Add chapter at current time">+ Add Chapter</button>
+                    <button class="btn-sm" id="exportBtn" title="Copy chapters as timestamps">Export</button>
+                    <button class="btn-sm" id="clearBtn" title="Remove all chapters">Clear</button>
+                </div>
+
+                <div class="shortcuts-hint">
+                    <kbd>1</kbd>-<kbd>9</kbd> jump to chapter &middot;
+                    <kbd>Space</kbd> play/pause &middot;
+                    <kbd>&larr;</kbd><kbd>&rarr;</kbd> prev/next
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <div class="toast" id="toast"></div>
+
+    <script>
+        // =============================================
+        // State
+        // =============================================
+        let player = null;
+        let playerReady = false;
+        let chapters = [];
+        let currentChapterIndex = -1;
+        let videoDuration = 0;
+        let updateInterval = null;
+        let apiKey = localStorage.getItem('yt_api_key') || '';
+
+        // Command engine state
+        let cmdQueue = [];       // array of { chapterIndex, repeats }
+        let cmdQueuePos = 0;     // current position in queue
+        let cmdCurrentRep = 0;   // current repeat count for active item
+        let cmdActive = false;   // whether a command sequence is running
+        let cmdWatcher = null;   // interval that monitors playback position
+
+        // =============================================
+        // YouTube IFrame API
+        // =============================================
+        const tag = document.createElement('script');
+        tag.src = 'https://www.youtube.com/iframe_api';
+        document.head.appendChild(tag);
+
+        window.onYouTubeIframeAPIReady = function () {
+            const origin = window.location.protocol === 'file:'
+                ? undefined
+                : window.location.origin;
+            player = new YT.Player('ytplayer', {
+                height: '100%',
+                width: '100%',
+                playerVars: {
+                    autoplay: 0,
+                    modestbranding: 1,
+                    rel: 0,
+                    fs: 1,
+                    ...(origin ? { origin } : {})
+                },
+                events: {
+                    onReady: onPlayerReady,
+                    onStateChange: onPlayerStateChange,
+                    onError: onPlayerError
+                }
+            });
+        };
+
+        function onPlayerReady() {
+            playerReady = true;
+            document.getElementById('generateBtn').disabled = false;
+        }
+
+        function onPlayerStateChange(event) {
+            if (event.data === YT.PlayerState.PLAYING) {
+                hideError();
+                startProgressUpdates();
+            } else if (event.data === YT.PlayerState.PAUSED || event.data === YT.PlayerState.ENDED) {
+                stopProgressUpdates();
+                updateProgress();
+            }
+        }
+
+        const ERROR_MESSAGES = {
+            2: 'Invalid video ID. Check the URL and try again.',
+            5: 'This video cannot be played in an embedded player (HTML5 error).',
+            100: 'Video not found. It may have been removed or made private.',
+            101: 'The video owner does not allow this video to be played in embedded players.',
+            150: 'The video owner does not allow this video to be played in embedded players.'
+        };
+
+        function onPlayerError(event) {
+            const code = event.data;
+            let message = ERROR_MESSAGES[code] || `YouTube player error (code ${code}).`;
+
+            let html = `<strong>Error ${code}:</strong> ${message}<br><br>`;
+
+            if (code === 101 || code === 150 || code === 153) {
+                html += `Many official music videos (VEVO, major labels) block embedded playback. Try:<br>
+                    &bull; A different upload of the same track (fan uploads, lyric videos, etc.)<br>
+                    &bull; Unofficial or remix versions that allow embedding`;
+            }
+
+            if (window.location.protocol === 'file:') {
+                html += `<br><br><strong>Tip:</strong> You're opening this page from a local file (<code>file://</code>), which causes issues with some videos.
+                    For best results, run a local server:<br>
+                    <code>npx serve</code> or <code>python -m http.server 8000</code> in this folder, then open <code>http://localhost:8000</code>`;
+            }
+
+            showError(html);
+        }
+
+        function showError(html) {
+            const banner = document.getElementById('errorBanner');
+            document.getElementById('errorContent').innerHTML = html;
+            banner.classList.add('show');
+        }
+
+        function hideError() {
+            document.getElementById('errorBanner').classList.remove('show');
+        }
+
+        // =============================================
+        // Progress Tracking
+        // =============================================
+        function startProgressUpdates() {
+            stopProgressUpdates();
+            updateInterval = setInterval(updateProgress, 250);
+        }
+
+        function stopProgressUpdates() {
+            if (updateInterval) {
+                clearInterval(updateInterval);
+                updateInterval = null;
+            }
+        }
+
+        function updateProgress() {
+            if (!player || !playerReady || !videoDuration) return;
+            const currentTime = player.getCurrentTime();
+            const pct = (currentTime / videoDuration) * 100;
+            document.getElementById('progressFill').style.width = pct + '%';
+            document.getElementById('timeDisplay').textContent =
+                formatTime(currentTime) + ' / ' + formatTime(videoDuration);
+            updateActiveChapter(currentTime);
+        }
+
+        function updateActiveChapter(currentTime) {
+            let idx = -1;
+            for (let i = chapters.length - 1; i >= 0; i--) {
+                if (currentTime >= chapters[i].time - 0.3) {
+                    idx = i;
+                    break;
+                }
+            }
+
+            if (idx !== currentChapterIndex) {
+                currentChapterIndex = idx;
+                renderChapterHighlights();
+            }
+
+            // Update individual chapter progress
+            if (idx >= 0) {
+                const chapterStart = chapters[idx].time;
+                const chapterEnd = idx < chapters.length - 1 ? chapters[idx + 1].time : videoDuration;
+                const chapterDuration = chapterEnd - chapterStart;
+                const chapterProgress = chapterDuration > 0 ? ((currentTime - chapterStart) / chapterDuration) * 100 : 0;
+                const progressEl = document.querySelector(`.chapter-btn[data-index="${idx}"] .chapter-progress-bg`);
+                if (progressEl) progressEl.style.width = Math.min(100, chapterProgress) + '%';
+            }
+        }
+
+        function renderChapterHighlights() {
+            document.querySelectorAll('.chapter-btn').forEach((btn, i) => {
+                btn.classList.toggle('active', i === currentChapterIndex);
+                const prog = btn.querySelector('.chapter-progress-bg');
+                if (i !== currentChapterIndex && prog) prog.style.width = '0%';
+            });
+
+            // Scroll active chapter into view
+            const active = document.querySelector('.chapter-btn.active');
+            if (active) active.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+
+        // =============================================
+        // Video Loading
+        // =============================================
+        function extractVideoId(input) {
+            input = input.trim();
+            // Direct video ID (11 chars)
+            if (/^[a-zA-Z0-9_-]{11}$/.test(input)) return input;
+            // Full URL patterns
+            const patterns = [
+                /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/|youtube\.com\/v\/|youtube\.com\/shorts\/)([a-zA-Z0-9_-]{11})/,
+                /[?&]v=([a-zA-Z0-9_-]{11})/
+            ];
+            for (const p of patterns) {
+                const m = input.match(p);
+                if (m) return m[1];
+            }
+            return null;
+        }
+
+        function loadVideo(videoId) {
+            if (!player || !playerReady) {
+                showToast('Player not ready yet, please wait...');
+                return;
+            }
+            hideError();
+            document.getElementById('playerPlaceholder').style.display = 'none';
+            document.getElementById('videoTitle').textContent = 'Loading...';
+            player.loadVideoById(videoId);
+
+            // Wait for video info with timeout
+            let attempts = 0;
+            const maxAttempts = 30; // ~9 seconds
+            const checkDuration = setInterval(() => {
+                attempts++;
+                const d = player.getDuration();
+                if (d > 0) {
+                    clearInterval(checkDuration);
+                    videoDuration = d;
+                    const info = player.getVideoData();
+                    document.getElementById('videoTitle').textContent = info.title || 'Untitled';
+                    document.getElementById('generateBtn').disabled = false;
+                    autoGenerateChapters();
+                } else if (attempts >= maxAttempts) {
+                    clearInterval(checkDuration);
+                    document.getElementById('videoTitle').textContent = 'Failed to load';
+                    showError(
+                        '<strong>Video failed to load.</strong> This could mean:<br>' +
+                        '&bull; The video blocks embedded playback<br>' +
+                        '&bull; The video ID is incorrect<br>' +
+                        '&bull; Network/CORS issue from <code>file://</code> protocol' +
+                        (window.location.protocol === 'file:'
+                            ? '<br><br><strong>Tip:</strong> Run <code>npx serve</code> or <code>python -m http.server 8000</code> in this folder and open <code>http://localhost:8000</code>'
+                            : '')
+                    );
+                }
+            }, 300);
+        }
+
+        function autoGenerateChapters() {
+            if (videoDuration > 0) generateChapters();
+        }
+
+        // =============================================
+        // Search
+        // =============================================
+        async function searchYouTube(query) {
+            if (!apiKey) {
+                showToast('Enter a YouTube API key in settings to enable search');
+                document.getElementById('settingsPanel').classList.add('open');
+                return;
+            }
+            try {
+                const url = `https://www.googleapis.com/youtube/v3/search?part=snippet&q=${encodeURIComponent(query)}&type=video&maxResults=12&key=${apiKey}`;
+                const resp = await fetch(url);
+                if (!resp.ok) throw new Error('API error: ' + resp.status);
+                const data = await resp.json();
+                displaySearchResults(data.items || []);
+            } catch (err) {
+                showToast('Search failed: ' + err.message);
+            }
+        }
+
+        function displaySearchResults(items) {
+            const container = document.getElementById('searchResults');
+            if (items.length === 0) {
+                container.classList.remove('open');
+                showToast('No results found');
+                return;
+            }
+            container.innerHTML = items.map(item => {
+                const s = item.snippet;
+                const thumb = s.thumbnails?.medium?.url || s.thumbnails?.default?.url || '';
+                const title = escapeHtml(s.title);
+                const channel = escapeHtml(s.channelTitle);
+                return `
+                    <div class="search-result-card" data-video-id="${item.id.videoId}">
+                        <img src="${thumb}" alt="" loading="lazy">
+                        <div class="info">
+                            <div class="title">${title}</div>
+                            <div class="channel">${channel}</div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+            container.classList.add('open');
+
+            container.querySelectorAll('.search-result-card').forEach(card => {
+                card.addEventListener('click', () => {
+                    const vid = card.dataset.videoId;
+                    loadVideo(vid);
+                    container.classList.remove('open');
+                    document.getElementById('urlInput').value = '';
+                });
+            });
+        }
+
+        // =============================================
+        // Chapter Generation
+        // =============================================
+        const GENRE_PRESETS = {
+            house: {
+                bpm: 128,
+                structure: [
+                    { name: 'Intro', pct: 0.00 },
+                    { name: 'Verse', pct: 0.10 },
+                    { name: 'Pre-Chorus', pct: 0.18 },
+                    { name: 'Chorus', pct: 0.26 },
+                    { name: 'Verse 2', pct: 0.40 },
+                    { name: 'Pre-Chorus 2', pct: 0.50 },
+                    { name: 'Chorus 2', pct: 0.58 },
+                    { name: 'Bridge', pct: 0.74 },
+                    { name: 'Outro', pct: 0.88 }
+                ]
+            },
+            techno: {
+                bpm: 135,
+                structure: [
+                    { name: 'Intro', pct: 0.00 },
+                    { name: 'Verse', pct: 0.12 },
+                    { name: 'Pre-Chorus', pct: 0.24 },
+                    { name: 'Chorus', pct: 0.32 },
+                    { name: 'Bridge', pct: 0.48 },
+                    { name: 'Pre-Chorus 2', pct: 0.58 },
+                    { name: 'Chorus 2', pct: 0.67 },
+                    { name: 'Verse 2', pct: 0.80 },
+                    { name: 'Outro', pct: 0.92 }
+                ]
+            },
+            trance: {
+                bpm: 138,
+                structure: [
+                    { name: 'Intro', pct: 0.00 },
+                    { name: 'Verse', pct: 0.08 },
+                    { name: 'Pre-Chorus', pct: 0.18 },
+                    { name: 'Chorus', pct: 0.26 },
+                    { name: 'Bridge', pct: 0.40 },
+                    { name: 'Pre-Chorus 2', pct: 0.52 },
+                    { name: 'Chorus 2', pct: 0.62 },
+                    { name: 'Verse 2', pct: 0.78 },
+                    { name: 'Outro', pct: 0.90 }
+                ]
+            },
+            dnb: {
+                bpm: 174,
+                structure: [
+                    { name: 'Intro', pct: 0.00 },
+                    { name: 'Verse', pct: 0.10 },
+                    { name: 'Pre-Chorus', pct: 0.20 },
+                    { name: 'Chorus', pct: 0.28 },
+                    { name: 'Verse 2', pct: 0.42 },
+                    { name: 'Pre-Chorus 2', pct: 0.52 },
+                    { name: 'Chorus 2', pct: 0.62 },
+                    { name: 'Bridge', pct: 0.78 },
+                    { name: 'Outro', pct: 0.90 }
+                ]
+            },
+            dubstep: {
+                bpm: 140,
+                structure: [
+                    { name: 'Intro', pct: 0.00 },
+                    { name: 'Verse', pct: 0.10 },
+                    { name: 'Pre-Chorus', pct: 0.20 },
+                    { name: 'Chorus', pct: 0.28 },
+                    { name: 'Verse 2', pct: 0.42 },
+                    { name: 'Pre-Chorus 2', pct: 0.54 },
+                    { name: 'Chorus 2', pct: 0.63 },
+                    { name: 'Bridge', pct: 0.78 },
+                    { name: 'Outro', pct: 0.90 }
+                ]
+            },
+            edm: {
+                bpm: 128,
+                structure: [
+                    { name: 'Intro', pct: 0.00 },
+                    { name: 'Verse', pct: 0.08 },
+                    { name: 'Pre-Chorus', pct: 0.16 },
+                    { name: 'Chorus', pct: 0.24 },
+                    { name: 'Verse 2', pct: 0.38 },
+                    { name: 'Pre-Chorus 2', pct: 0.50 },
+                    { name: 'Chorus 2', pct: 0.58 },
+                    { name: 'Bridge', pct: 0.74 },
+                    { name: 'Outro', pct: 0.88 }
+                ]
+            }
+        };
+
+        function generateChapters() {
+            if (!videoDuration || videoDuration <= 0) {
+                showToast('Load a video first');
+                return;
+            }
+
+            const genre = document.getElementById('genreSelect').value;
+            const bpm = parseInt(document.getElementById('bpmInput').value) || 128;
+            const preset = GENRE_PRESETS[genre] || GENRE_PRESETS.house;
+            const barDuration = (60 / bpm) * 4;
+
+            chapters = preset.structure.map(section => {
+                let rawTime = videoDuration * section.pct;
+                // Quantize to nearest bar boundary for musical accuracy
+                rawTime = Math.round(rawTime / barDuration) * barDuration;
+                rawTime = Math.max(0, Math.min(rawTime, videoDuration - 1));
+                return { name: section.name, time: rawTime };
+            });
+
+            // Ensure no duplicate timestamps
+            for (let i = 1; i < chapters.length; i++) {
+                if (chapters[i].time <= chapters[i - 1].time) {
+                    chapters[i].time = chapters[i - 1].time + barDuration;
+                }
+            }
+
+            // Remove chapters that exceed duration
+            chapters = chapters.filter(c => c.time < videoDuration);
+
+            currentChapterIndex = -1;
+            renderChapters();
+            updateProgress();
+            showToast(`Generated ${chapters.length} chapters for ${genre} at ${bpm} BPM`);
+        }
+
+        // =============================================
+        // Chapter Rendering
+        // =============================================
+        function renderChapters() {
+            const container = document.getElementById('chapterList');
+
+            if (chapters.length === 0) {
+                container.innerHTML = '<div class="empty-state"><p>No chapters yet. Load a video and click Generate.</p></div>';
+                return;
+            }
+
+            container.innerHTML = chapters.map((ch, i) => {
+                const endTime = i < chapters.length - 1 ? chapters[i + 1].time : videoDuration;
+                const duration = endTime - ch.time;
+                return `
+                    <div class="chapter-btn ${i === currentChapterIndex ? 'active' : ''}"
+                            data-index="${i}" title="Jump to ${ch.name} (${formatTime(ch.time)})">
+                        <div class="chapter-progress-bg"></div>
+                        <div class="chapter-index">${i + 1}</div>
+                        <div class="chapter-info">
+                            <div class="chapter-name-row">
+                                <span class="chapter-name">${escapeHtml(ch.name)}</span>
+                                <button class="chapter-action-btn edit" data-action="edit" data-index="${i}" title="Rename">&#9998;</button>
+                            </div>
+                            <div class="chapter-time">${formatTime(ch.time)} &mdash; ${formatTime(endTime)} (${formatTime(duration)})</div>
+                        </div>
+                        <button class="chapter-action-btn delete" data-action="delete" data-index="${i}" title="Delete">&times;</button>
+                    </div>
+                `;
+            }).join('');
+
+            // Attach click handlers
+            container.querySelectorAll('.chapter-btn').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    // Don't navigate if clicking action buttons
+                    if (e.target.closest('.chapter-action-btn')) return;
+                    const idx = parseInt(btn.dataset.index);
+                    seekToChapter(idx);
+                });
+            });
+
+            container.querySelectorAll('.chapter-action-btn').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    const idx = parseInt(btn.dataset.index);
+                    if (btn.dataset.action === 'edit') editChapterName(idx);
+                    if (btn.dataset.action === 'delete') deleteChapter(idx);
+                });
+            });
+        }
+
+        function seekToChapter(index) {
+            if (index < 0 || index >= chapters.length) return;
+            if (!player || !playerReady) return;
+            player.seekTo(chapters[index].time, true);
+            // Always play after seeking
+            if (player.getPlayerState() !== YT.PlayerState.PLAYING) {
+                player.playVideo();
+            }
+            currentChapterIndex = index;
+            renderChapterHighlights();
+        }
+
+        function editChapterName(index) {
+            const btn = document.querySelector(`.chapter-btn[data-index="${index}"]`);
+            const row = btn.querySelector('.chapter-name-row');
+            const currentName = chapters[index].name;
+
+            // Replace the row contents with an input
+            const editBtn = row.querySelector('.chapter-action-btn.edit');
+            const nameSpan = row.querySelector('.chapter-name');
+            nameSpan.style.display = 'none';
+            if (editBtn) editBtn.style.display = 'none';
+
+            const input = document.createElement('input');
+            input.className = 'chapter-name-input';
+            input.value = currentName;
+            row.insertBefore(input, row.firstChild);
+            input.focus();
+            input.select();
+
+            const finish = () => {
+                const newName = input.value.trim() || currentName;
+                chapters[index].name = newName;
+                renderChapters();
+            };
+
+            input.addEventListener('blur', finish);
+            input.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') finish();
+                if (e.key === 'Escape') { input.value = currentName; finish(); }
+            });
+        }
+
+        function deleteChapter(index) {
+            chapters.splice(index, 1);
+            if (currentChapterIndex >= chapters.length) currentChapterIndex = chapters.length - 1;
+            renderChapters();
+        }
+
+        function addChapterAtCurrentTime() {
+            if (!player || !playerReady || !videoDuration) {
+                showToast('Load a video first');
+                return;
+            }
+            const time = player.getCurrentTime();
+            const name = 'Chapter ' + (chapters.length + 1);
+
+            // Insert in sorted order
+            let insertIdx = chapters.findIndex(c => c.time > time);
+            if (insertIdx === -1) insertIdx = chapters.length;
+            chapters.splice(insertIdx, 0, { name, time });
+            renderChapters();
+            showToast(`Added chapter at ${formatTime(time)}`);
+
+            // Immediately start editing the name
+            setTimeout(() => editChapterName(insertIdx), 50);
+        }
+
+        function exportChapters() {
+            if (chapters.length === 0) {
+                showToast('No chapters to export');
+                return;
+            }
+            const text = chapters.map(c => `${formatTime(c.time)} ${c.name}`).join('\n');
+            navigator.clipboard.writeText(text).then(() => {
+                showToast('Chapters copied to clipboard!');
+            }).catch(() => {
+                // Fallback
+                const ta = document.createElement('textarea');
+                ta.value = text;
+                document.body.appendChild(ta);
+                ta.select();
+                document.execCommand('copy');
+                document.body.removeChild(ta);
+                showToast('Chapters copied to clipboard!');
+            });
+        }
+
+        function clearChapters() {
+            chapters = [];
+            currentChapterIndex = -1;
+            renderChapters();
+        }
+
+        // =============================================
+        // UI Event Handlers
+        // =============================================
+        document.getElementById('loadBtn').addEventListener('click', handleLoad);
+        document.getElementById('urlInput').addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') handleLoad();
+        });
+
+        function handleLoad() {
+            const input = document.getElementById('urlInput').value.trim();
+            if (!input) return;
+
+            const videoId = extractVideoId(input);
+            if (videoId) {
+                loadVideo(videoId);
+                document.getElementById('searchResults').classList.remove('open');
+            } else {
+                // Treat as search query
+                searchYouTube(input);
+            }
+        }
+
+        document.getElementById('settingsBtn').addEventListener('click', () => {
+            const panel = document.getElementById('settingsPanel');
+            panel.classList.toggle('open');
+            if (panel.classList.contains('open') && apiKey) {
+                document.getElementById('apiKeyInput').value = apiKey;
+            }
+        });
+
+        document.getElementById('saveKeyBtn').addEventListener('click', () => {
+            apiKey = document.getElementById('apiKeyInput').value.trim();
+            localStorage.setItem('yt_api_key', apiKey);
+            document.getElementById('settingsPanel').classList.remove('open');
+            showToast(apiKey ? 'API key saved!' : 'API key cleared');
+        });
+
+        document.getElementById('generateBtn').addEventListener('click', generateChapters);
+        document.getElementById('addChapterBtn').addEventListener('click', addChapterAtCurrentTime);
+        document.getElementById('exportBtn').addEventListener('click', exportChapters);
+        document.getElementById('clearBtn').addEventListener('click', clearChapters);
+
+        // Genre change updates BPM
+        document.getElementById('genreSelect').addEventListener('change', (e) => {
+            const preset = GENRE_PRESETS[e.target.value];
+            if (preset) document.getElementById('bpmInput').value = preset.bpm;
+        });
+
+        // Progress bar seek
+        document.getElementById('progressBar').addEventListener('click', (e) => {
+            if (!player || !playerReady || !videoDuration) return;
+            const rect = e.currentTarget.getBoundingClientRect();
+            const pct = (e.clientX - rect.left) / rect.width;
+            player.seekTo(pct * videoDuration, true);
+        });
+
+        // =============================================
+        // Keyboard Shortcuts
+        // =============================================
+        document.addEventListener('keydown', (e) => {
+            // Don't handle shortcuts when typing in inputs
+            if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT') return;
+
+            // Number keys 1-9 → jump to chapter
+            if (e.key >= '1' && e.key <= '9') {
+                const idx = parseInt(e.key) - 1;
+                if (idx < chapters.length) {
+                    e.preventDefault();
+                    seekToChapter(idx);
+                }
+                return;
+            }
+
+            switch (e.key) {
+                case ' ':
+                    e.preventDefault();
+                    if (!player || !playerReady) return;
+                    if (player.getPlayerState() === YT.PlayerState.PLAYING) {
+                        player.pauseVideo();
+                    } else {
+                        player.playVideo();
+                    }
+                    break;
+                case 'ArrowLeft':
+                    e.preventDefault();
+                    if (currentChapterIndex > 0) seekToChapter(currentChapterIndex - 1);
+                    break;
+                case 'ArrowRight':
+                    e.preventDefault();
+                    if (currentChapterIndex < chapters.length - 1) seekToChapter(currentChapterIndex + 1);
+                    break;
+            }
+        });
+
+        // =============================================
+        // Command Engine
+        // =============================================
+        const WORD_NUMBERS = {
+            one:1, two:2, three:3, four:4, five:5, six:6, seven:7, eight:8, nine:9, ten:10,
+            once:1, twice:2, thrice:3
+        };
+
+        const WORD_SPEEDS = {
+            'half': 0.5, 'quarter': 0.25, 'double': 2, 'normal': 1, 'full': 1
+        };
+
+        function findChapterByName(name) {
+            const lower = name.toLowerCase().trim();
+            // Exact match first
+            let idx = chapters.findIndex(c => c.name.toLowerCase() === lower);
+            if (idx !== -1) return idx;
+            // Partial / includes match
+            idx = chapters.findIndex(c => c.name.toLowerCase().includes(lower));
+            if (idx !== -1) return idx;
+            // Fuzzy: check if query words all appear in chapter name
+            const words = lower.split(/\s+/);
+            idx = chapters.findIndex(c => {
+                const cn = c.name.toLowerCase();
+                return words.every(w => cn.includes(w));
+            });
+            return idx;
+        }
+
+        function parseCommand(text) {
+            text = text.trim().toLowerCase();
+            if (!text) return null;
+
+            // Simple commands
+            if (text === 'stop' || text === 'cancel') return { type: 'stop' };
+            if (text === 'pause') return { type: 'pause' };
+            if (text === 'play' || text === 'resume') return { type: 'resume' };
+            if (text === 'next') return { type: 'next' };
+            if (text === 'prev' || text === 'previous' || text === 'back') return { type: 'prev' };
+
+            // "play X then Y then Z" — sequence with optional repeats per segment
+            // "play X 3 times" — single chapter with repeats
+            // "loop X" — infinite loop
+            // Speed can be specified globally: "play X at 50% speed" or "play X at 0.5x"
+            const isLoop = text.startsWith('loop ');
+            let body = text.replace(/^(play|loop)\s+/i, '');
+
+            // Extract global speed modifier (applies to all segments)
+            let globalSpeed = null;
+            // Match: "at 50% speed", "at 0.75x", "at half speed", "at 50%", "speed 50%", "0.5x speed"
+            const speedPctMatch = body.match(/\s+(?:at\s+)?(\d+(?:\.\d+)?)\s*%\s*(?:speed)?/);
+            const speedMultMatch = body.match(/\s+(?:at\s+)?(\d+(?:\.\d+)?)\s*x\s*(?:speed)?/);
+            const speedWordMatch = body.match(/\s+(?:at\s+)?(half|quarter|double|normal|full)\s*(?:speed)?/);
+            const speedSlowFast = body.match(/\s+(slow(?:er)?|fast(?:er)?)/);
+
+            if (speedPctMatch) {
+                globalSpeed = parseFloat(speedPctMatch[1]) / 100;
+                body = body.replace(speedPctMatch[0], '');
+            } else if (speedMultMatch) {
+                globalSpeed = parseFloat(speedMultMatch[1]);
+                body = body.replace(speedMultMatch[0], '');
+            } else if (speedWordMatch) {
+                globalSpeed = WORD_SPEEDS[speedWordMatch[1]] || 1;
+                body = body.replace(speedWordMatch[0], '');
+            } else if (speedSlowFast) {
+                globalSpeed = speedSlowFast[1].startsWith('slow') ? 0.5 : 2;
+                body = body.replace(speedSlowFast[0], '');
+            }
+
+            // Clamp speed to YouTube's supported range
+            if (globalSpeed !== null) {
+                globalSpeed = Math.max(0.25, Math.min(2, globalSpeed));
+            }
+
+            // Split on "then", "and then", ","
+            const segments = body.split(/\s+then\s+|\s+and\s+then\s+|\s*,\s*/).map(s => s.trim()).filter(Boolean);
+
+            const TERMINAL_ACTIONS = { pause: 'pause', stop: 'stop', resume: 'resume', play: 'resume' };
+
+            const queue = [];
+            for (const seg of segments) {
+                // Check if this segment is a terminal action (pause, stop, etc.)
+                const segLower = seg.trim().toLowerCase();
+                if (TERMINAL_ACTIONS[segLower]) {
+                    queue.push({ action: TERMINAL_ACTIONS[segLower] });
+                    continue;
+                }
+
+                let repeats = isLoop ? Infinity : 1;
+                let chapterName = seg;
+                let segSpeed = globalSpeed;
+
+                // Check for per-segment speed (overrides global)
+                let cleaned = seg;
+                const segPctMatch = cleaned.match(/\s+(?:at\s+)?(\d+(?:\.\d+)?)\s*%\s*(?:speed)?/);
+                const segMultMatch = cleaned.match(/\s+(?:at\s+)?(\d+(?:\.\d+)?)\s*x\s*(?:speed)?/);
+                const segWordSpd = cleaned.match(/\s+(?:at\s+)?(half|quarter|double|normal|full)\s*(?:speed)?/);
+                if (segPctMatch) {
+                    segSpeed = Math.max(0.25, Math.min(2, parseFloat(segPctMatch[1]) / 100));
+                    cleaned = cleaned.replace(segPctMatch[0], '');
+                } else if (segMultMatch) {
+                    segSpeed = Math.max(0.25, Math.min(2, parseFloat(segMultMatch[1])));
+                    cleaned = cleaned.replace(segMultMatch[0], '');
+                } else if (segWordSpd) {
+                    segSpeed = WORD_SPEEDS[segWordSpd[1]] || 1;
+                    cleaned = cleaned.replace(segWordSpd[0], '');
+                }
+                chapterName = cleaned;
+
+                // Check for "N times" or word-number at end
+                const timesMatch = chapterName.match(/^(.+?)\s+(\d+)\s*(?:times?|x)$/);
+                const wordTimesMatch = chapterName.match(/^(.+?)\s+(once|twice|thrice|one|two|three|four|five|six|seven|eight|nine|ten)\s*(?:times?)?$/);
+                const loopSegMatch = chapterName.match(/^(.+?)\s+loop$/);
+
+                if (timesMatch) {
+                    chapterName = timesMatch[1];
+                    repeats = parseInt(timesMatch[2]);
+                } else if (wordTimesMatch) {
+                    chapterName = wordTimesMatch[1];
+                    repeats = WORD_NUMBERS[wordTimesMatch[2]] || 1;
+                } else if (loopSegMatch) {
+                    chapterName = loopSegMatch[1];
+                    repeats = Infinity;
+                }
+
+                const idx = findChapterByName(chapterName);
+                if (idx === -1) return { type: 'error', message: `Chapter "${chapterName}" not found` };
+                queue.push({ chapterIndex: idx, repeats, speed: segSpeed });
+            }
+
+            if (queue.length === 0) return { type: 'error', message: 'No chapters matched' };
+            return { type: 'sequence', queue };
+        }
+
+        function executeCommand(text) {
+            const cmd = parseCommand(text);
+            if (!cmd) return;
+
+            switch (cmd.type) {
+                case 'error':
+                    showToast(cmd.message);
+                    return;
+                case 'stop':
+                    stopCommand();
+                    showToast('Command stopped');
+                    return;
+                case 'pause':
+                    if (player && playerReady) player.pauseVideo();
+                    return;
+                case 'resume':
+                    if (player && playerReady) player.playVideo();
+                    return;
+                case 'next':
+                    if (currentChapterIndex < chapters.length - 1) seekToChapter(currentChapterIndex + 1);
+                    return;
+                case 'prev':
+                    if (currentChapterIndex > 0) seekToChapter(currentChapterIndex - 1);
+                    return;
+                case 'sequence':
+                    startCommandSequence(cmd.queue);
+                    return;
+            }
+        }
+
+        function startCommandSequence(queue) {
+            stopCommand(); // clear any prior command
+
+            cmdQueue = queue;
+            cmdQueuePos = 0;
+            cmdCurrentRep = 0;
+            cmdActive = true;
+
+            // Remember current speed to restore later
+            if (player && playerReady) {
+                cmdPreviousSpeed = player.getPlaybackRate();
+            }
+
+            updateCommandStatus();
+            playCurrentQueueItem();
+
+            // Watch playback position to detect chapter end
+            cmdWatcher = setInterval(watchCommandPlayback, 200);
+        }
+
+        let cmdPreviousSpeed = 1; // to restore after command ends
+
+        function playCurrentQueueItem() {
+            if (cmdQueuePos >= cmdQueue.length) {
+                // Sequence complete
+                stopCommand();
+                showToast('Command sequence complete');
+                return;
+            }
+            const item = cmdQueue[cmdQueuePos];
+
+            // Handle terminal actions (pause, stop, resume)
+            if (item.action) {
+                if (item.action === 'pause' && player && playerReady) {
+                    player.pauseVideo();
+                } else if (item.action === 'stop' && player && playerReady) {
+                    player.pauseVideo();
+                }
+                stopCommand();
+                showToast(item.action === 'pause' ? 'Paused' : 'Sequence complete');
+                return;
+            }
+
+            seekToChapter(item.chapterIndex);
+
+            // Apply speed for this queue item
+            if (item.speed !== null && item.speed !== undefined && player) {
+                player.setPlaybackRate(item.speed);
+            }
+
+            updateCommandStatus();
+        }
+
+        function watchCommandPlayback() {
+            if (!cmdActive || !player || !playerReady) return;
+            if (player.getPlayerState() !== YT.PlayerState.PLAYING) return;
+
+            const item = cmdQueue[cmdQueuePos];
+            if (!item) return;
+
+            const idx = item.chapterIndex;
+            const chapterEnd = idx < chapters.length - 1 ? chapters[idx + 1].time : videoDuration;
+            const currentTime = player.getCurrentTime();
+
+            // Detect when playback has reached the end of this chapter
+            if (currentTime >= chapterEnd - 0.3) {
+                cmdCurrentRep++;
+                if (cmdCurrentRep < item.repeats) {
+                    // Repeat same chapter
+                    seekToChapter(idx);
+                    updateCommandStatus();
+                } else {
+                    // Move to next item in queue
+                    cmdQueuePos++;
+                    cmdCurrentRep = 0;
+                    playCurrentQueueItem();
+                }
+            }
+        }
+
+        function stopCommand() {
+            const wasActive = cmdActive;
+            cmdActive = false;
+            cmdQueue = [];
+            cmdQueuePos = 0;
+            cmdCurrentRep = 0;
+            if (cmdWatcher) {
+                clearInterval(cmdWatcher);
+                cmdWatcher = null;
+            }
+            // Restore original playback speed
+            if (wasActive && player && playerReady) {
+                player.setPlaybackRate(cmdPreviousSpeed);
+            }
+            document.getElementById('commandStatus').classList.remove('active');
+        }
+
+        function updateCommandStatus() {
+            const el = document.getElementById('commandStatus');
+            const textEl = document.getElementById('commandStatusText');
+            if (!cmdActive || cmdQueuePos >= cmdQueue.length) {
+                el.classList.remove('active');
+                return;
+            }
+            el.classList.add('active');
+
+            const item = cmdQueue[cmdQueuePos];
+            const name = chapters[item.chapterIndex]?.name || '?';
+            const repStr = item.repeats === Infinity
+                ? 'looping'
+                : `repeat ${cmdCurrentRep + 1}/${item.repeats}`;
+            const speedStr = item.speed != null && item.speed !== 1
+                ? ` @ ${Math.round(item.speed * 100)}%`
+                : '';
+            const queueStr = cmdQueue.length > 1
+                ? ` <span>(step ${cmdQueuePos + 1}/${cmdQueue.length})</span>`
+                : '';
+
+            textEl.innerHTML = `Playing <strong>${escapeHtml(name)}</strong>${speedStr} &mdash; ${repStr}${queueStr}`;
+        }
+
+        // Command bar event handlers
+        document.getElementById('commandBtn').addEventListener('click', () => {
+            const input = document.getElementById('commandInput');
+            executeCommand(input.value);
+        });
+
+        document.getElementById('commandInput').addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                executeCommand(e.target.value);
+            }
+        });
+
+        document.getElementById('stopCommandBtn').addEventListener('click', () => {
+            stopCommand();
+            showToast('Command stopped');
+        });
+
+        // =============================================
+        // Utilities
+        // =============================================
+        function formatTime(seconds) {
+            if (isNaN(seconds) || seconds < 0) return '0:00';
+            seconds = Math.floor(seconds);
+            const h = Math.floor(seconds / 3600);
+            const m = Math.floor((seconds % 3600) / 60);
+            const s = seconds % 60;
+            if (h > 0) return `${h}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+            return `${m}:${s.toString().padStart(2, '0')}`;
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        let toastTimeout;
+        function showToast(message) {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.classList.add('show');
+            clearTimeout(toastTimeout);
+            toastTimeout = setTimeout(() => toast.classList.remove('show'), 2500);
+        }
+
+        // Load saved API key into settings input
+        if (apiKey) document.getElementById('apiKeyInput').value = apiKey;
+    </script>
+</body>
+</html>
