@@ -1553,8 +1553,11 @@
             if (text === 'next') return { type: 'next' };
             if (text === 'prev' || text === 'previous' || text === 'back') return { type: 'prev' };
 
-            // "play X then Y then Z" — sequence with optional repeats per segment
+            // "play X then Y then Z" — sequence with optional repeats
             // "play X 3 times" — single chapter with repeats
+            // "play X then Y 2 times" — repeat the whole sequence 2 times
+            // "play (X then Y) 3 times then Z" — grouped repeat with parentheses
+            // "play X then Y, repeat 2 times, then stop" — repeat keyword
             // "loop X" — infinite loop
             // Speed can be specified globally: "play X at 50% speed" or "play X at 0.5x"
             const isLoop = text.startsWith('loop ');
@@ -1562,7 +1565,6 @@
 
             // Extract global speed modifier (applies to all segments)
             let globalSpeed = null;
-            // Match: "at 50% speed", "at 0.75x", "at half speed", "at 50%", "speed 50%", "0.5x speed"
             const speedPctMatch = body.match(/\s+(?:at\s+)?(\d+(?:\.\d+)?)\s*%\s*(?:speed)?/);
             const speedMultMatch = body.match(/\s+(?:at\s+)?(\d+(?:\.\d+)?)\s*x\s*(?:speed)?/);
             const speedWordMatch = body.match(/\s+(?:at\s+)?(half|quarter|double|normal|full)\s*(?:speed)?/);
@@ -1582,9 +1584,56 @@
                 body = body.replace(speedSlowFast[0], '');
             }
 
-            // Clamp speed to YouTube's supported range
             if (globalSpeed !== null) {
                 globalSpeed = Math.max(0.25, Math.min(2, globalSpeed));
+            }
+
+            // Handle parenthesized groups: "(X then Y) N times"
+            // Replace grouped sections with placeholder tokens, parse them as sub-sequences
+            const groups = [];
+            // Handle parenthesized groups — count OUTSIDE: "(X then Y) 3 times"
+            body = body.replace(/\(([^)]+)\)\s*(\d+)\s*(?:times?|x)/g, (match, inner, count) => {
+                const token = `__group_${groups.length}__`;
+                groups.push({ inner, repeats: parseInt(count) });
+                return token;
+            });
+            body = body.replace(/\(([^)]+)\)\s+(once|twice|thrice|one|two|three|four|five|six|seven|eight|nine|ten)\s*(?:times?)?/g, (match, inner, word) => {
+                const token = `__group_${groups.length}__`;
+                groups.push({ inner, repeats: WORD_NUMBERS[word] || 1 });
+                return token;
+            });
+            body = body.replace(/\(([^)]+)\)\s+loop/g, (match, inner) => {
+                const token = `__group_${groups.length}__`;
+                groups.push({ inner, repeats: Infinity });
+                return token;
+            });
+            // Handle parenthesized groups — count INSIDE: "(chorus 3 times)"
+            body = body.replace(/\(([^)]+?)\s+(\d+)\s*(?:times?|x)\)/g, (match, inner, count) => {
+                const token = `__group_${groups.length}__`;
+                groups.push({ inner, repeats: parseInt(count) });
+                return token;
+            });
+            body = body.replace(/\(([^)]+?)\s+(once|twice|thrice|one|two|three|four|five|six|seven|eight|nine|ten)\s*(?:times?)?\)/g, (match, inner, word) => {
+                const token = `__group_${groups.length}__`;
+                groups.push({ inner, repeats: WORD_NUMBERS[word] || 1 });
+                return token;
+            });
+            body = body.replace(/\(([^)]+?)\s+loop\)/g, (match, inner) => {
+                const token = `__group_${groups.length}__`;
+                groups.push({ inner, repeats: Infinity });
+                return token;
+            });
+
+            // Handle "repeat N times" keyword — extract sequence repeat count
+            let sequenceRepeat = null;
+            const repeatKeyword = body.match(/[,\s]+repeat\s+(\d+)\s*(?:times?|x)/);
+            const repeatWordKeyword = body.match(/[,\s]+repeat\s+(once|twice|thrice|one|two|three|four|five|six|seven|eight|nine|ten)\s*(?:times?)?/);
+            if (repeatKeyword) {
+                sequenceRepeat = parseInt(repeatKeyword[1]);
+                body = body.replace(repeatKeyword[0], '');
+            } else if (repeatWordKeyword) {
+                sequenceRepeat = WORD_NUMBERS[repeatWordKeyword[1]] || 1;
+                body = body.replace(repeatWordKeyword[0], '');
             }
 
             // Split on "then", "and then", ","
@@ -1592,21 +1641,21 @@
 
             const TERMINAL_ACTIONS = { pause: 'pause', stop: 'stop', resume: 'resume', play: 'resume' };
 
-            const queue = [];
-            for (const seg of segments) {
-                // Check if this segment is a terminal action (pause, stop, etc.)
+            // Parse a single segment into a queue item
+            function parseSegment(seg) {
                 const segLower = seg.trim().toLowerCase();
                 if (TERMINAL_ACTIONS[segLower]) {
-                    queue.push({ action: TERMINAL_ACTIONS[segLower] });
-                    continue;
+                    return { action: TERMINAL_ACTIONS[segLower] };
                 }
 
                 let repeats = isLoop ? Infinity : 1;
                 let chapterName = seg;
                 let segSpeed = globalSpeed;
 
-                // Check for per-segment speed (overrides global)
+                // Check for per-segment speed
                 let cleaned = seg;
+                // Remove leading verbs like "play" or "start" that users may insert mid-sequence
+                cleaned = cleaned.replace(/^(?:play|start)\s+/i, '');
                 const segPctMatch = cleaned.match(/\s+(?:at\s+)?(\d+(?:\.\d+)?)\s*%\s*(?:speed)?/);
                 const segMultMatch = cleaned.match(/\s+(?:at\s+)?(\d+(?:\.\d+)?)\s*x\s*(?:speed)?/);
                 const segWordSpd = cleaned.match(/\s+(?:at\s+)?(half|quarter|double|normal|full)\s*(?:speed)?/);
@@ -1639,11 +1688,65 @@
                 }
 
                 const idx = findChapterByName(chapterName);
-                if (idx === -1) return { type: 'error', message: `Chapter "${chapterName}" not found` };
-                queue.push({ chapterIndex: idx, repeats, speed: segSpeed });
+                if (idx === -1) return { error: `Chapter "${chapterName}" not found` };
+                return { chapterIndex: idx, repeats, speed: segSpeed };
+            }
+
+            // Parse a group's inner content into multiple queue items
+            function parseGroupInner(inner) {
+                const subSegments = inner.split(/\s+then\s+|\s+and\s+then\s+|\s*,\s*/).map(s => s.trim()).filter(Boolean);
+                const items = [];
+                for (const sub of subSegments) {
+                    const item = parseSegment(sub);
+                    if (item.error) return { error: item.error };
+                    items.push(item);
+                }
+                return items;
+            }
+
+            const queue = [];
+            for (const seg of segments) {
+                // Check if this segment is a group placeholder
+                const groupMatch = seg.match(/^__group_(\d+)__$/);
+                if (groupMatch) {
+                    const group = groups[parseInt(groupMatch[1])];
+                    const groupItems = parseGroupInner(group.inner);
+                    if (groupItems.error) return { type: 'error', message: groupItems.error };
+                    // Add as a group item (sub-sequence with repeats)
+                    queue.push({ group: groupItems, repeats: group.repeats });
+                    continue;
+                }
+
+                const item = parseSegment(seg);
+                if (item.error) return { type: 'error', message: item.error };
+                queue.push(item);
             }
 
             if (queue.length === 0) return { type: 'error', message: 'No chapters matched' };
+
+            // Sequence repeat logic:
+            // If "repeat N times" keyword was used, apply it to all non-terminal items
+            // If no explicit "repeat" keyword, check if the LAST non-terminal segment has
+            // "N times" AND there are multiple chapter segments — treat as whole-sequence repeat
+            if (sequenceRepeat) {
+                return { type: 'sequence', queue, sequenceRepeats: sequenceRepeat };
+            }
+
+            // Smart detection: "play A then B 2 times then stop"
+            // If last non-terminal item has repeats > 1 and there are multiple chapter items,
+            // treat it as a sequence repeat
+            const chapterItems = queue.filter(item => !item.action);
+            if (chapterItems.length > 1) {
+                const lastChapterItem = chapterItems[chapterItems.length - 1];
+                // Only apply this logic if the last item has explicit repeats > 1
+                // and it's NOT a group (groups handle their own repeats)
+                if (lastChapterItem.repeats > 1 && !lastChapterItem.group) {
+                    const seqRepeats = lastChapterItem.repeats;
+                    lastChapterItem.repeats = 1;
+                    return { type: 'sequence', queue, sequenceRepeats: seqRepeats };
+                }
+            }
+
             return { type: 'sequence', queue };
         }
 
@@ -1672,41 +1775,107 @@
                     if (currentChapterIndex > 0) seekToChapter(currentChapterIndex - 1);
                     return;
                 case 'sequence':
-                    startCommandSequence(cmd.queue);
+                    startCommandSequence(cmd.queue, cmd.sequenceRepeats);
                     return;
             }
         }
 
-        function startCommandSequence(queue) {
+        function startCommandSequence(queue, sequenceRepeats) {
             stopCommand(); // clear any prior command
 
+            // Flatten groups into the queue for execution
+            // Groups are expanded: each group becomes its sub-items, tracked for repeat logic
             cmdQueue = queue;
             cmdQueuePos = 0;
             cmdCurrentRep = 0;
             cmdActive = true;
+            cmdSequenceRepeats = sequenceRepeats || 1;
+            cmdSequenceCurrentRep = 0;
 
             // Remember current speed to restore later
             if (player && playerReady) {
                 cmdPreviousSpeed = player.getPlaybackRate();
             }
 
+            // Flatten the queue for linear playback (expand groups)
+            cmdFlatQueue = flattenQueue(queue);
+
+            // If the flat queue ends with terminal actions (pause/stop), extract them
+            // and hold them until sequence repeats complete so they don't terminate early.
+            cmdTrailingActions = [];
+            while (cmdFlatQueue.length > 0 && cmdFlatQueue[cmdFlatQueue.length - 1].action) {
+                cmdTrailingActions.unshift(cmdFlatQueue.pop());
+            }
+
+            cmdFlatPos = 0;
+
             updateCommandStatus();
-            playCurrentQueueItem();
+            playCurrentFlatItem();
 
             // Watch playback position to detect chapter end
             cmdWatcher = setInterval(watchCommandPlayback, 200);
         }
 
-        let cmdPreviousSpeed = 1; // to restore after command ends
+        let cmdPreviousSpeed = 1;
+        let cmdSequenceRepeats = 1;
+        let cmdSequenceCurrentRep = 0;
+        let cmdFlatQueue = [];
+        let cmdFlatPos = 0;
+        let cmdTrailingActions = [];
 
-        function playCurrentQueueItem() {
-            if (cmdQueuePos >= cmdQueue.length) {
-                // Sequence complete
+        // Flatten queue: expand group items into individual items with group tracking
+        function flattenQueue(queue) {
+            const flat = [];
+            for (const item of queue) {
+                if (item.group) {
+                    // A group: repeat its sub-items N times
+                    const reps = item.repeats === Infinity ? 1 : item.repeats;
+                    for (let r = 0; r < reps; r++) {
+                        for (const sub of item.group) {
+                            flat.push({ ...sub, _groupRep: r, _groupTotal: item.repeats });
+                        }
+                    }
+                    // For infinite loop groups, mark last item to signal re-expand
+                    if (item.repeats === Infinity) {
+                        flat[flat.length - 1]._loopGroup = item.group;
+                    }
+                } else {
+                    flat.push(item);
+                }
+            }
+            return flat;
+        }
+
+        function playCurrentFlatItem() {
+            if (cmdFlatPos >= cmdFlatQueue.length) {
+                // Check if we need to repeat the whole sequence
+                cmdSequenceCurrentRep++;
+                if (cmdSequenceCurrentRep < cmdSequenceRepeats) {
+                    // Restart the sequence
+                    cmdFlatPos = 0;
+                    cmdCurrentRep = 0;
+                    updateCommandStatus();
+                    playCurrentFlatItem();
+                    return;
+                }
+
+                // Sequence fully complete — now run trailing actions if any (like 'stop')
+                if (cmdTrailingActions && cmdTrailingActions.length > 0) {
+                    for (const act of cmdTrailingActions) {
+                        if (act.action === 'pause' && player && playerReady) player.pauseVideo();
+                        if (act.action === 'stop' && player && playerReady) player.pauseVideo();
+                    }
+                    stopCommand();
+                    showToast('Command sequence complete');
+                    return;
+                }
+
+                // No trailing actions — finish
                 stopCommand();
                 showToast('Command sequence complete');
                 return;
             }
-            const item = cmdQueue[cmdQueuePos];
+            const item = cmdFlatQueue[cmdFlatPos];
 
             // Handle terminal actions (pause, stop, resume)
             if (item.action) {
@@ -1734,8 +1903,8 @@
             if (!cmdActive || !player || !playerReady) return;
             if (player.getPlayerState() !== YT.PlayerState.PLAYING) return;
 
-            const item = cmdQueue[cmdQueuePos];
-            if (!item) return;
+            const item = cmdFlatQueue[cmdFlatPos];
+            if (!item || item.action) return;
 
             const idx = item.chapterIndex;
             const chapterEnd = idx < chapters.length - 1 ? chapters[idx + 1].time : videoDuration;
@@ -1749,10 +1918,19 @@
                     seekToChapter(idx);
                     updateCommandStatus();
                 } else {
-                    // Move to next item in queue
-                    cmdQueuePos++;
-                    cmdCurrentRep = 0;
-                    playCurrentQueueItem();
+                    // Check for infinite loop group
+                    if (item._loopGroup) {
+                        // Re-seek to start of group
+                        const groupStart = cmdFlatPos - item._loopGroup.length + 1;
+                        cmdFlatPos = groupStart;
+                        cmdCurrentRep = 0;
+                        playCurrentFlatItem();
+                    } else {
+                        // Move to next item
+                        cmdFlatPos++;
+                        cmdCurrentRep = 0;
+                        playCurrentFlatItem();
+                    }
                 }
             }
         }
@@ -1761,8 +1939,12 @@
             const wasActive = cmdActive;
             cmdActive = false;
             cmdQueue = [];
+            cmdFlatQueue = [];
             cmdQueuePos = 0;
+            cmdFlatPos = 0;
             cmdCurrentRep = 0;
+            cmdSequenceRepeats = 1;
+            cmdSequenceCurrentRep = 0;
             if (cmdWatcher) {
                 clearInterval(cmdWatcher);
                 cmdWatcher = null;
@@ -1777,25 +1959,30 @@
         function updateCommandStatus() {
             const el = document.getElementById('commandStatus');
             const textEl = document.getElementById('commandStatusText');
-            if (!cmdActive || cmdQueuePos >= cmdQueue.length) {
+            if (!cmdActive || cmdFlatPos >= cmdFlatQueue.length) {
                 el.classList.remove('active');
                 return;
             }
             el.classList.add('active');
 
-            const item = cmdQueue[cmdQueuePos];
+            const item = cmdFlatQueue[cmdFlatPos];
+            if (!item || item.action) return;
+
             const name = chapters[item.chapterIndex]?.name || '?';
             const repStr = item.repeats === Infinity
                 ? 'looping'
-                : `repeat ${cmdCurrentRep + 1}/${item.repeats}`;
+                : item.repeats > 1 ? `repeat ${cmdCurrentRep + 1}/${item.repeats}` : '';
             const speedStr = item.speed != null && item.speed !== 1
                 ? ` @ ${Math.round(item.speed * 100)}%`
                 : '';
-            const queueStr = cmdQueue.length > 1
-                ? ` <span>(step ${cmdQueuePos + 1}/${cmdQueue.length})</span>`
+            const seqStr = cmdSequenceRepeats > 1
+                ? ` <span>(loop ${cmdSequenceCurrentRep + 1}/${cmdSequenceRepeats})</span>`
+                : '';
+            const stepStr = cmdFlatQueue.filter(i => !i.action).length > 1
+                ? ` <span>(step ${cmdFlatPos + 1}/${cmdFlatQueue.length})</span>`
                 : '';
 
-            textEl.innerHTML = `Playing <strong>${escapeHtml(name)}</strong>${speedStr} &mdash; ${repStr}${queueStr}`;
+            textEl.innerHTML = `Playing <strong>${escapeHtml(name)}</strong>${speedStr}${repStr ? ' &mdash; ' + repStr : ''}${seqStr || stepStr}`;
         }
 
         // Command bar event handlers
