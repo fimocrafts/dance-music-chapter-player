@@ -301,6 +301,39 @@
             white-space: nowrap;
         }
 
+        /* Speed Controls */
+        .speed-controls {
+            display: flex;
+            gap: 4px;
+            padding: 10px 18px;
+            flex-wrap: wrap;
+        }
+
+        .speed-btn {
+            padding: 4px 8px;
+            font-size: 0.72rem;
+            font-weight: 600;
+            border: 1px solid #333;
+            border-radius: 4px;
+            background: var(--bg-card);
+            color: var(--text-dim);
+            cursor: pointer;
+            transition: all 0.15s;
+            min-width: 42px;
+            text-align: center;
+        }
+
+        .speed-btn:hover {
+            background: var(--bg-hover);
+            color: var(--text);
+        }
+
+        .speed-btn.active {
+            background: var(--accent);
+            color: white;
+            border-color: var(--accent);
+        }
+
         /* Chapter Section */
         .chapter-section {
             background: var(--bg-surface);
@@ -401,7 +434,7 @@
             display: flex;
             align-items: center;
             gap: 12px;
-            padding: 16px 14px;
+            padding: 20px 14px;
             background: var(--bg-card);
             border: 2px solid transparent;
             border-radius: var(--radius);
@@ -554,6 +587,125 @@
             color: var(--text);
         }
 
+        /* Marker Buttons */
+        .btn-marker {
+            padding: 6px 12px;
+            font-size: 0.78rem;
+            border-radius: 6px;
+            border: 1px solid #444;
+            background: var(--bg-card);
+            color: var(--text-dim);
+            cursor: pointer;
+            transition: all 0.15s;
+            white-space: nowrap;
+        }
+
+        .btn-marker:hover {
+            background: var(--bg-hover);
+            color: var(--text);
+        }
+
+        .btn-marker.set {
+            border-color: var(--green);
+            color: var(--green);
+            background: rgba(22, 199, 154, 0.1);
+        }
+
+        .btn-marker.set:hover {
+            background: rgba(22, 199, 154, 0.2);
+        }
+
+        /* Progress Bar Markers */
+        .progress-bar {
+            position: relative;
+        }
+
+        .marker-range {
+            position: absolute;
+            top: 0;
+            height: 100%;
+            background: rgba(22, 199, 154, 0.25);
+            border-radius: 3px;
+            pointer-events: none;
+            z-index: 1;
+        }
+
+        .marker-triangle {
+            position: absolute;
+            top: -6px;
+            width: 0;
+            height: 0;
+            border-left: 5px solid transparent;
+            border-right: 5px solid transparent;
+            z-index: 2;
+            pointer-events: none;
+            transform: translateX(-5px);
+        }
+
+        .marker-triangle.start {
+            border-bottom: 7px solid var(--green);
+        }
+
+        .marker-triangle.end {
+            border-bottom: 7px solid var(--accent);
+        }
+
+        /* Custom Chapters Section */
+        .custom-chapters-section {
+            margin-top: 12px;
+            padding-top: 12px;
+            border-top: 1px solid #2a2a40;
+        }
+
+        .custom-chapters-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 8px;
+        }
+
+        .custom-chapters-header h3 {
+            font-size: 0.9rem;
+            font-weight: 700;
+            color: #f0a500;
+        }
+
+        .custom-chapter-btn {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 20px 14px;
+            background: rgba(240, 165, 0, 0.08);
+            border: 2px solid transparent;
+            border-radius: var(--radius);
+            cursor: pointer;
+            transition: all 0.15s;
+            text-align: left;
+            color: var(--text);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .custom-chapter-btn:hover {
+            background: rgba(240, 165, 0, 0.15);
+            border-color: rgba(240, 165, 0, 0.4);
+        }
+
+        .custom-chapter-btn.active {
+            border-color: #f0a500;
+            background: rgba(240, 165, 0, 0.12);
+            box-shadow: 0 0 15px rgba(240, 165, 0, 0.2);
+        }
+
+        .custom-chapter-btn.active .chapter-index {
+            background: #f0a500;
+            color: var(--bg-dark);
+        }
+
+        .custom-chapter-btn .chapter-progress-bg {
+            background: rgba(240, 165, 0, 0.06);
+        }
+
         /* Empty State */
         .empty-state {
             text-align: center;
@@ -676,6 +828,52 @@
             background: rgba(233, 69, 96, 0.25);
         }
 
+        .voice-btn {
+            padding: 9px 14px;
+            font-size: 0.9rem;
+            border: 1px solid #444;
+            border-radius: 6px;
+            background: var(--bg-card);
+            color: var(--text);
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            white-space: nowrap;
+        }
+
+        .voice-btn:hover {
+            border-color: var(--accent);
+            background: var(--bg-hover);
+        }
+
+        .voice-btn.listening {
+            border-color: var(--green);
+            background: rgba(22, 199, 154, 0.1);
+            color: var(--green);
+            animation: pulse-btn 1s ease-in-out infinite;
+        }
+
+        @keyframes pulse-btn {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.6; }
+        }
+
+        .voice-transcript {
+            margin-top: 8px;
+            padding: 8px 12px;
+            background: var(--bg-card);
+            border-radius: 6px;
+            font-size: 0.85rem;
+            color: var(--text-dim);
+            display: none;
+        }
+
+        .voice-transcript.show { display: block; }
+        .voice-transcript.interim { color: var(--yellow); }
+        .voice-transcript.final { color: var(--green); }
+
         .command-examples {
             margin-top: 8px;
             font-size: 0.73rem;
@@ -795,7 +993,9 @@
                 <label>&gt;_</label>
                 <input type="text" id="commandInput" placeholder="Try: play Build Up 3 times, loop Drop, play Intro then Drop...">
                 <button class="btn btn-primary" id="commandBtn" style="padding:9px 16px">Run</button>
+                <button class="voice-btn" id="voiceBtn" title="Listen to command">🎤 Voice</button>
             </div>
+            <div class="voice-transcript" id="voiceTranscript"></div>
             <div class="command-status" id="commandStatus">
                 <div class="loop-indicator"></div>
                 <div class="status-text" id="commandStatusText"></div>
@@ -823,6 +1023,23 @@
                         </div>
                         <span class="time-display" id="timeDisplay">0:00 / 0:00</span>
                     </div>
+                </div>
+                <div class="speed-controls" id="speedControls">
+                    <button class="speed-btn" data-speed="0.30">30%</button>
+                    <button class="speed-btn" data-speed="0.35">35%</button>
+                    <button class="speed-btn" data-speed="0.40">40%</button>
+                    <button class="speed-btn" data-speed="0.45">45%</button>
+                    <button class="speed-btn" data-speed="0.50">50%</button>
+                    <button class="speed-btn" data-speed="0.55">55%</button>
+                    <button class="speed-btn" data-speed="0.60">60%</button>
+                    <button class="speed-btn" data-speed="0.65">65%</button>
+                    <button class="speed-btn" data-speed="0.70">70%</button>
+                    <button class="speed-btn" data-speed="0.75">75%</button>
+                    <button class="speed-btn" data-speed="0.80">80%</button>
+                    <button class="speed-btn" data-speed="0.85">85%</button>
+                    <button class="speed-btn" data-speed="0.90">90%</button>
+                    <button class="speed-btn" data-speed="0.95">95%</button>
+                    <button class="speed-btn active" data-speed="1.00">100%</button>
                 </div>
             </div>
 
@@ -853,15 +1070,26 @@
                 </div>
 
                 <div class="chapter-bottom">
-                    <button class="btn-sm" id="addChapterBtn" title="Add chapter at current time">+ Add Chapter</button>
+                    <button class="btn-marker" id="setStartBtn" title="Set start marker at current time">Set Start</button>
+                    <button class="btn-marker" id="setEndBtn" title="Set end marker at current time">Set End</button>
+                    <button class="btn-sm" id="addChapterBtn" title="Add chapter from markers">+ Add Chapter</button>
                     <button class="btn-sm" id="exportBtn" title="Copy chapters as timestamps">Export</button>
                     <button class="btn-sm" id="clearBtn" title="Remove all chapters">Clear</button>
+                </div>
+
+                <div class="custom-chapters-section" id="customChaptersSection" style="display:none">
+                    <div class="custom-chapters-header">
+                        <h3>Custom Chapters</h3>
+                    </div>
+                    <div class="chapter-list" id="customChapterList"></div>
                 </div>
 
                 <div class="shortcuts-hint">
                     <kbd>1</kbd>-<kbd>9</kbd> jump to chapter &middot;
                     <kbd>Space</kbd> play/pause &middot;
-                    <kbd>&larr;</kbd><kbd>&rarr;</kbd> prev/next
+                    <kbd>&larr;</kbd><kbd>&rarr;</kbd> prev/next &middot;
+                    <kbd>S</kbd> set start &middot;
+                    <kbd>E</kbd> set end
                 </div>
             </div>
         </main>
@@ -880,6 +1108,8 @@
         let videoDuration = 0;
         let updateInterval = null;
         let apiKey = localStorage.getItem('yt_api_key') || '';
+        let selectedSpeed = 1.0;
+        let cmdOverridingSpeed = false;
 
         // Command engine state
         let cmdQueue = [];       // array of { chapterIndex, repeats }
@@ -993,6 +1223,16 @@
             document.getElementById('progressFill').style.width = pct + '%';
             document.getElementById('timeDisplay').textContent =
                 formatTime(currentTime) + ' / ' + formatTime(videoDuration);
+
+            // Pause at custom chapter end time BEFORE updating highlights
+            if (!cmdActive && currentChapterIndex >= 0) {
+                const ch = chapters[currentChapterIndex];
+                if (ch.endTime != null && currentTime >= ch.endTime - 0.3) {
+                    player.pauseVideo();
+                    return;
+                }
+            }
+
             updateActiveChapter(currentTime);
         }
 
@@ -1000,6 +1240,11 @@
             let idx = -1;
             for (let i = chapters.length - 1; i >= 0; i--) {
                 if (currentTime >= chapters[i].time - 0.3) {
+                    // For chapters with explicit endTime, only highlight if within range
+                    const end = getChapterEndTime(i);
+                    if (chapters[i].endTime != null && currentTime >= end - 0.3) {
+                        continue;
+                    }
                     idx = i;
                     break;
                 }
@@ -1013,23 +1258,24 @@
             // Update individual chapter progress
             if (idx >= 0) {
                 const chapterStart = chapters[idx].time;
-                const chapterEnd = idx < chapters.length - 1 ? chapters[idx + 1].time : videoDuration;
+                const chapterEnd = getChapterEndTime(idx);
                 const chapterDuration = chapterEnd - chapterStart;
                 const chapterProgress = chapterDuration > 0 ? ((currentTime - chapterStart) / chapterDuration) * 100 : 0;
-                const progressEl = document.querySelector(`.chapter-btn[data-index="${idx}"] .chapter-progress-bg`);
+                const progressEl = document.querySelector(`[data-index="${idx}"] .chapter-progress-bg`);
                 if (progressEl) progressEl.style.width = Math.min(100, chapterProgress) + '%';
             }
         }
 
         function renderChapterHighlights() {
-            document.querySelectorAll('.chapter-btn').forEach((btn, i) => {
-                btn.classList.toggle('active', i === currentChapterIndex);
+            document.querySelectorAll('.chapter-btn, .custom-chapter-btn').forEach(btn => {
+                const idx = parseInt(btn.dataset.index);
+                btn.classList.toggle('active', idx === currentChapterIndex);
                 const prog = btn.querySelector('.chapter-progress-bg');
-                if (i !== currentChapterIndex && prog) prog.style.width = '0%';
+                if (idx !== currentChapterIndex && prog) prog.style.width = '0%';
             });
 
             // Scroll active chapter into view
-            const active = document.querySelector('.chapter-btn.active');
+            const active = document.querySelector('.chapter-btn.active, .custom-chapter-btn.active');
             if (active) active.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
         }
 
@@ -1075,6 +1321,7 @@
                     document.getElementById('videoTitle').textContent = info.title || 'Untitled';
                     document.getElementById('generateBtn').disabled = false;
                     autoGenerateChapters();
+                    applySelectedSpeed();
                 } else if (attempts >= maxAttempts) {
                     clearInterval(checkDuration);
                     document.getElementById('videoTitle').textContent = 'Failed to load';
@@ -1279,48 +1526,80 @@
         // =============================================
         function renderChapters() {
             const container = document.getElementById('chapterList');
+            const customContainer = document.getElementById('customChapterList');
+            const customSection = document.getElementById('customChaptersSection');
 
-            if (chapters.length === 0) {
+            const generated = chapters.map((ch, i) => ({ ch, i })).filter(x => x.ch.endTime == null);
+            const custom = chapters.map((ch, i) => ({ ch, i })).filter(x => x.ch.endTime != null);
+
+            // Render generated chapters
+            if (generated.length === 0) {
                 container.innerHTML = '<div class="empty-state"><p>No chapters yet. Load a video and click Generate.</p></div>';
-                return;
+            } else {
+                container.innerHTML = generated.map(({ ch, i }) => {
+                    const endTime = getChapterEndTime(i);
+                    const duration = endTime - ch.time;
+                    return `
+                        <div class="chapter-btn ${i === currentChapterIndex ? 'active' : ''}"
+                                data-index="${i}" title="Jump to ${ch.name} (${formatTime(ch.time)})">
+                            <div class="chapter-progress-bg"></div>
+                            <div class="chapter-index">${i + 1}</div>
+                            <div class="chapter-info">
+                                <div class="chapter-name-row">
+                                    <span class="chapter-name">${escapeHtml(ch.name)}</span>
+                                    <button class="chapter-action-btn edit" data-action="edit" data-index="${i}" title="Rename">&#9998;</button>
+                                </div>
+                                <div class="chapter-time">${formatTime(ch.time)} &mdash; ${formatTime(endTime)} (${formatTime(duration)})</div>
+                            </div>
+                            <button class="chapter-action-btn delete" data-action="delete" data-index="${i}" title="Delete">&times;</button>
+                        </div>
+                    `;
+                }).join('');
             }
 
-            container.innerHTML = chapters.map((ch, i) => {
-                const endTime = i < chapters.length - 1 ? chapters[i + 1].time : videoDuration;
-                const duration = endTime - ch.time;
-                return `
-                    <div class="chapter-btn ${i === currentChapterIndex ? 'active' : ''}"
-                            data-index="${i}" title="Jump to ${ch.name} (${formatTime(ch.time)})">
-                        <div class="chapter-progress-bg"></div>
-                        <div class="chapter-index">${i + 1}</div>
-                        <div class="chapter-info">
-                            <div class="chapter-name-row">
-                                <span class="chapter-name">${escapeHtml(ch.name)}</span>
-                                <button class="chapter-action-btn edit" data-action="edit" data-index="${i}" title="Rename">&#9998;</button>
+            // Render custom chapters
+            if (custom.length === 0) {
+                customSection.style.display = 'none';
+            } else {
+                customSection.style.display = '';
+                customContainer.innerHTML = custom.map(({ ch, i }) => {
+                    const endTime = getChapterEndTime(i);
+                    const duration = endTime - ch.time;
+                    return `
+                        <div class="custom-chapter-btn ${i === currentChapterIndex ? 'active' : ''}"
+                                data-index="${i}" title="Jump to ${ch.name} (${formatTime(ch.time)})">
+                            <div class="chapter-progress-bg"></div>
+                            <div class="chapter-index">${i + 1}</div>
+                            <div class="chapter-info">
+                                <div class="chapter-name-row">
+                                    <span class="chapter-name">${escapeHtml(ch.name)}</span>
+                                    <button class="chapter-action-btn edit" data-action="edit" data-index="${i}" title="Rename">&#9998;</button>
+                                </div>
+                                <div class="chapter-time">${formatTime(ch.time)} &mdash; ${formatTime(endTime)} (${formatTime(duration)})</div>
                             </div>
-                            <div class="chapter-time">${formatTime(ch.time)} &mdash; ${formatTime(endTime)} (${formatTime(duration)})</div>
+                            <button class="chapter-action-btn delete" data-action="delete" data-index="${i}" title="Delete">&times;</button>
                         </div>
-                        <button class="chapter-action-btn delete" data-action="delete" data-index="${i}" title="Delete">&times;</button>
-                    </div>
-                `;
-            }).join('');
+                    `;
+                }).join('');
+            }
 
-            // Attach click handlers
-            container.querySelectorAll('.chapter-btn').forEach(btn => {
-                btn.addEventListener('click', (e) => {
-                    // Don't navigate if clicking action buttons
-                    if (e.target.closest('.chapter-action-btn')) return;
-                    const idx = parseInt(btn.dataset.index);
-                    seekToChapter(idx);
+            // Attach click handlers to both containers
+            [container, customContainer].forEach(c => {
+                c.querySelectorAll('.chapter-btn, .custom-chapter-btn').forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        if (e.target.closest('.chapter-action-btn')) return;
+                        const idx = parseInt(btn.dataset.index);
+                        seekToChapter(idx);
+                    });
                 });
-            });
 
-            container.querySelectorAll('.chapter-action-btn').forEach(btn => {
-                btn.addEventListener('click', (e) => {
-                    e.stopPropagation();
-                    const idx = parseInt(btn.dataset.index);
-                    if (btn.dataset.action === 'edit') editChapterName(idx);
-                    if (btn.dataset.action === 'delete') deleteChapter(idx);
+                c.querySelectorAll('.chapter-action-btn').forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        const idx = parseInt(btn.dataset.index);
+                        if (btn.dataset.action === 'edit') editChapterName(idx);
+                        if (btn.dataset.action === 'delete') deleteChapter(idx);
+                    });
                 });
             });
         }
@@ -1372,6 +1651,123 @@
             chapters.splice(index, 1);
             if (currentChapterIndex >= chapters.length) currentChapterIndex = chapters.length - 1;
             renderChapters();
+        }
+
+        // =============================================
+        // Marker Functions
+        // =============================================
+        function getChapterEndTime(index) {
+            if (chapters[index].endTime != null) return chapters[index].endTime;
+            return index < chapters.length - 1 ? chapters[index + 1].time : videoDuration;
+        }
+
+        function setMarkerStart() {
+            if (!player || !playerReady || !videoDuration) {
+                showToast('Load a video first');
+                return;
+            }
+            markerStart = player.getCurrentTime();
+            if (markerEnd !== null && markerStart >= markerEnd) {
+                markerEnd = null;
+                showToast('Start set after previous end — end cleared');
+            }
+            renderMarkers();
+            updateMarkerButtons();
+            showToast(`Start: ${formatTime(markerStart)}`);
+        }
+
+        function setMarkerEnd() {
+            if (!player || !playerReady || !videoDuration) {
+                showToast('Load a video first');
+                return;
+            }
+            markerEnd = player.getCurrentTime();
+            if (markerStart !== null && markerEnd <= markerStart) {
+                showToast('End must be after start');
+                markerEnd = null;
+                return;
+            }
+            renderMarkers();
+            updateMarkerButtons();
+            showToast(`End: ${formatTime(markerEnd)}`);
+        }
+
+        function clearMarkers() {
+            markerStart = null;
+            markerEnd = null;
+            renderMarkers();
+            updateMarkerButtons();
+        }
+
+        function updateMarkerButtons() {
+            const startBtn = document.getElementById('setStartBtn');
+            const endBtn = document.getElementById('setEndBtn');
+            if (markerStart !== null) {
+                startBtn.textContent = `Start: ${formatTime(markerStart)}`;
+                startBtn.classList.add('set');
+            } else {
+                startBtn.textContent = 'Set Start';
+                startBtn.classList.remove('set');
+            }
+            if (markerEnd !== null) {
+                endBtn.textContent = `End: ${formatTime(markerEnd)}`;
+                endBtn.classList.add('set');
+            } else {
+                endBtn.textContent = 'Set End';
+                endBtn.classList.remove('set');
+            }
+        }
+
+        function renderMarkers() {
+            const bar = document.getElementById('progressBar');
+            bar.querySelectorAll('.marker-triangle, .marker-range').forEach(el => el.remove());
+
+            if (markerStart === null && markerEnd === null) return;
+            if (!videoDuration) return;
+
+            const startPct = markerStart !== null ? (markerStart / videoDuration) * 100 : 0;
+            const endPct = markerEnd !== null ? (markerEnd / videoDuration) * 100 : (markerStart !== null ? startPct : 100);
+
+            if (markerStart !== null) {
+                const tri = document.createElement('div');
+                tri.className = 'marker-triangle start';
+                tri.style.left = startPct + '%';
+                bar.appendChild(tri);
+            }
+
+            if (markerEnd !== null) {
+                const tri = document.createElement('div');
+                tri.className = 'marker-triangle end';
+                tri.style.left = endPct + '%';
+                bar.appendChild(tri);
+            }
+
+            if (markerStart !== null && markerEnd !== null) {
+                const range = document.createElement('div');
+                range.className = 'marker-range';
+                range.style.left = startPct + '%';
+                range.style.width = (endPct - startPct) + '%';
+                bar.appendChild(range);
+            }
+        }
+
+        function addChapterFromMarkers() {
+            if (!player || !playerReady || !videoDuration) {
+                showToast('Load a video first');
+                return;
+            }
+            if (markerStart === null || markerEnd === null) {
+                showToast('Set start and end markers first');
+                return;
+            }
+            const customCount = chapters.filter(c => c.endTime != null).length + 1;
+            const name = 'C' + customCount;
+            chapters.push({ name, time: markerStart, endTime: markerEnd });
+            renderChapters();
+            updateProgress();
+            showToast(`Added "${name}" (${formatTime(markerStart)} — ${formatTime(markerEnd)})`);
+            clearMarkers();
+            setTimeout(() => editChapterName(chapters.length - 1), 50);
         }
 
         function addChapterAtCurrentTime() {
@@ -1457,9 +1853,35 @@
         });
 
         document.getElementById('generateBtn').addEventListener('click', generateChapters);
-        document.getElementById('addChapterBtn').addEventListener('click', addChapterAtCurrentTime);
+        document.getElementById('setStartBtn').addEventListener('click', setMarkerStart);
+        document.getElementById('setEndBtn').addEventListener('click', setMarkerEnd);
+        document.getElementById('addChapterBtn').addEventListener('click', addChapterFromMarkers);
         document.getElementById('exportBtn').addEventListener('click', exportChapters);
         document.getElementById('clearBtn').addEventListener('click', clearChapters);
+
+        // Speed controls
+        document.getElementById('speedControls').addEventListener('click', (e) => {
+            const btn = e.target.closest('.speed-btn');
+            if (!btn) return;
+            const speed = parseFloat(btn.dataset.speed);
+            selectedSpeed = speed;
+            cmdOverridingSpeed = false;
+            updateSpeedButtons();
+            if (player && playerReady) player.setPlaybackRate(speed);
+        });
+
+        function updateSpeedButtons() {
+            document.querySelectorAll('.speed-btn').forEach(btn => {
+                const speed = parseFloat(btn.dataset.speed);
+                btn.classList.toggle('active', Math.abs(speed - selectedSpeed) < 0.001);
+            });
+        }
+
+        function applySelectedSpeed() {
+            if (player && playerReady && !cmdOverridingSpeed) {
+                player.setPlaybackRate(selectedSpeed);
+            }
+        }
 
         // Genre change updates BPM
         document.getElementById('genreSelect').addEventListener('change', (e) => {
@@ -1501,6 +1923,16 @@
                     } else {
                         player.playVideo();
                     }
+                    break;
+                case 's':
+                case 'S':
+                    e.preventDefault();
+                    setMarkerStart();
+                    break;
+                case 'e':
+                case 'E':
+                    e.preventDefault();
+                    setMarkerEnd();
                     break;
                 case 'ArrowLeft':
                     e.preventDefault();
@@ -1871,6 +2303,15 @@
                 }
 
                 // No trailing actions — finish
+                // Seek to the end of the last played chapter before stopping
+                if (cmdFlatQueue.length > 0) {
+                    const lastItem = cmdFlatQueue[cmdFlatPos - 1] || cmdFlatQueue[cmdFlatQueue.length - 1];
+                    if (lastItem && lastItem.chapterIndex != null && player && playerReady) {
+                        const end = getChapterEndTime(lastItem.chapterIndex);
+                        player.seekTo(end, false);
+                        player.pauseVideo();
+                    }
+                }
                 stopCommand();
                 showToast('Command sequence complete');
                 return;
@@ -1894,6 +2335,9 @@
             // Apply speed for this queue item
             if (item.speed !== null && item.speed !== undefined && player) {
                 player.setPlaybackRate(item.speed);
+                if (item.speed !== selectedSpeed) {
+                    cmdOverridingSpeed = true;
+                }
             }
 
             updateCommandStatus();
@@ -1907,7 +2351,7 @@
             if (!item || item.action) return;
 
             const idx = item.chapterIndex;
-            const chapterEnd = idx < chapters.length - 1 ? chapters[idx + 1].time : videoDuration;
+            const chapterEnd = getChapterEndTime(idx);
             const currentTime = player.getCurrentTime();
 
             // Detect when playback has reached the end of this chapter
@@ -1949,9 +2393,14 @@
                 clearInterval(cmdWatcher);
                 cmdWatcher = null;
             }
-            // Restore original playback speed
+            // Restore playback speed
             if (wasActive && player && playerReady) {
-                player.setPlaybackRate(cmdPreviousSpeed);
+                if (cmdOverridingSpeed) {
+                    player.setPlaybackRate(selectedSpeed);
+                    cmdOverridingSpeed = false;
+                } else {
+                    player.setPlaybackRate(cmdPreviousSpeed);
+                }
             }
             document.getElementById('commandStatus').classList.remove('active');
         }
@@ -2003,6 +2452,18 @@
         });
 
         // =============================================
+        // Voice Input Helpers
+        // =============================================
+        function cleanVoiceInput(text) {
+            return text
+                .toLowerCase()
+                .replace(/[.,!?;:]/g, '')
+                .replace(/\b(the|a|an|and|or)\b/g, '')
+                .replace(/\s+/g, ' ')
+                .trim();
+        }
+
+        // =============================================
         // Utilities
         // =============================================
         function formatTime(seconds) {
@@ -2021,6 +2482,12 @@
             return div.innerHTML;
         }
 
+        // =============================================
+        // Marker State
+        // =============================================
+        let markerStart = null;
+        let markerEnd = null;
+
         let toastTimeout;
         function showToast(message) {
             const toast = document.getElementById('toast');
@@ -2028,6 +2495,96 @@
             toast.classList.add('show');
             clearTimeout(toastTimeout);
             toastTimeout = setTimeout(() => toast.classList.remove('show'), 2500);
+        }
+
+        // =============================================
+        // Voice Input
+        // =============================================
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        let voiceRecognition = null;
+        let voiceActive = false;
+
+        if (SpeechRecognition) {
+            voiceRecognition = new SpeechRecognition();
+            voiceRecognition.continuous = false;
+            voiceRecognition.interimResults = true;
+            voiceRecognition.lang = 'en-US';
+
+            voiceRecognition.onstart = () => {
+                voiceActive = true;
+                document.getElementById('voiceBtn').classList.add('listening');
+                showToast('Listening... (speak now)');
+            };
+
+            voiceRecognition.onresult = (event) => {
+                let interimTranscript = '';
+                let finalTranscript = '';
+
+                for (let i = event.resultIndex; i < event.results.length; i++) {
+                    const transcript = event.results[i][0].transcript;
+                    if (event.results[i].isFinal) {
+                        finalTranscript += transcript + ' ';
+                    } else {
+                        interimTranscript += transcript;
+                    }
+                }
+
+                const transcriptEl = document.getElementById('voiceTranscript');
+                const commandInput = document.getElementById('commandInput');
+
+                if (interimTranscript) {
+                    transcriptEl.textContent = interimTranscript;
+                    transcriptEl.classList.add('show', 'interim');
+                    transcriptEl.classList.remove('final');
+                } else if (finalTranscript) {
+                    transcriptEl.textContent = finalTranscript.trim();
+                    transcriptEl.classList.add('show', 'final');
+                    transcriptEl.classList.remove('interim');
+                }
+
+                if (event.results[event.results.length - 1].isFinal && finalTranscript) {
+                    setTimeout(() => {
+                        const rawCommand = finalTranscript.trim();
+                        const cleanedCommand = cleanVoiceInput(rawCommand);
+                        commandInput.value = cleanedCommand;
+                        executeCommand(cleanedCommand);
+                        setTimeout(() => {
+                            transcriptEl.classList.remove('show');
+                            commandInput.value = '';
+                        }, 1500);
+                    }, 200);
+                }
+            };
+
+            voiceRecognition.onerror = (event) => {
+                const errorMap = {
+                    'no-speech': 'No speech detected. Try again.',
+                    'audio-capture': 'No microphone found.',
+                    'network': 'Network error. Check your connection.',
+                    'aborted': 'Speech recognition cancelled.',
+                };
+                const message = errorMap[event.error] || 'Voice error: ' + event.error;
+                showToast(message);
+                document.getElementById('voiceBtn').classList.remove('listening');
+                voiceActive = false;
+            };
+
+            voiceRecognition.onend = () => {
+                document.getElementById('voiceBtn').classList.remove('listening');
+                voiceActive = false;
+            };
+
+            document.getElementById('voiceBtn').addEventListener('click', () => {
+                if (voiceActive) {
+                    voiceRecognition.stop();
+                } else {
+                    voiceRecognition.start();
+                }
+            });
+        } else {
+            document.getElementById('voiceBtn').disabled = true;
+            document.getElementById('voiceBtn').title = 'Web Speech API not supported in this browser';
+            document.getElementById('voiceBtn').style.opacity = '0.5';
         }
 
         // Load saved API key into settings input
