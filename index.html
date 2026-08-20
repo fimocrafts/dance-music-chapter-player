@@ -525,6 +525,27 @@
             color: var(--text-dim);
             font-variant-numeric: tabular-nums;
             margin-top: 3px;
+            cursor: pointer;
+            border-radius: 3px;
+            padding: 1px 3px;
+            transition: background 0.15s;
+        }
+
+        .chapter-time:hover {
+            background: rgba(255,255,255,0.08);
+        }
+
+        .chapter-time-input {
+            font-size: 0.75rem;
+            font-variant-numeric: tabular-nums;
+            background: var(--bg-dark);
+            border: 1px solid var(--accent);
+            border-radius: 3px;
+            color: var(--text);
+            padding: 1px 4px;
+            width: 80px;
+            outline: none;
+            margin-top: 3px;
         }
 
         .chapter-action-btn {
@@ -944,6 +965,77 @@
             opacity: 1;
         }
 
+        /* Import modal */
+        .modal-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.7);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.2s;
+        }
+
+        .modal-overlay.visible {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .modal-box {
+            background: var(--bg-surface);
+            border: 1px solid #444;
+            border-radius: var(--radius);
+            padding: 20px;
+            width: 90%;
+            max-width: 500px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .modal-box h3 {
+            margin: 0;
+            font-size: 1rem;
+            color: var(--accent);
+        }
+
+        .modal-box textarea {
+            width: 100%;
+            min-height: 120px;
+            background: var(--bg-dark);
+            border: 1px solid #444;
+            border-radius: 4px;
+            color: var(--text);
+            font-family: monospace;
+            font-size: 0.85rem;
+            padding: 8px;
+            resize: vertical;
+            outline: none;
+        }
+
+        .modal-box textarea:focus {
+            border-color: var(--accent);
+        }
+
+        .modal-box .modal-hint {
+            font-size: 0.75rem;
+            color: var(--text-dim);
+            margin: 0;
+        }
+
+        .modal-box .modal-actions {
+            display: flex;
+            gap: 8px;
+            justify-content: flex-end;
+        }
+
+        .modal-box .modal-actions .btn-sm {
+            padding: 6px 14px;
+        }
+
         /* Responsive */
         @media (max-width: 800px) {
             main {
@@ -956,6 +1048,38 @@
 
             header { flex-direction: column; align-items: stretch; }
             header h1 { text-align: center; }
+
+            .command-bar-inner {
+                flex-wrap: wrap;
+            }
+
+            .command-bar-inner input {
+                min-width: 0;
+                flex: 1 1 100%;
+                order: 1;
+            }
+
+            .command-bar-inner .btn-primary {
+                order: 2;
+            }
+
+            .voice-btn {
+                order: 3;
+                flex: 1;
+                justify-content: center;
+                font-size: 0.85rem;
+                padding: 9px 10px;
+            }
+
+            .speed-controls {
+                justify-content: center;
+            }
+
+            .speed-btn {
+                min-width: 36px;
+                padding: 4px 6px;
+                font-size: 0.68rem;
+            }
         }
     </style>
 </head>
@@ -1074,6 +1198,7 @@
                     <button class="btn-marker" id="setEndBtn" title="Set end marker at current time">Set End</button>
                     <button class="btn-sm" id="addChapterBtn" title="Add chapter from markers">+ Add Chapter</button>
                     <button class="btn-sm" id="exportBtn" title="Copy chapters as timestamps">Export</button>
+                    <button class="btn-sm" id="importBtn" title="Paste exported chapters">Import</button>
                     <button class="btn-sm" id="clearBtn" title="Remove all chapters">Clear</button>
                 </div>
 
@@ -1097,6 +1222,18 @@
 
     <div class="toast" id="toast"></div>
 
+    <div class="modal-overlay" id="importModal">
+        <div class="modal-box">
+            <h3>Import Chapters</h3>
+            <p class="modal-hint">Paste exported chapters below (one per line: <code>0:00 Chapter Name</code>):</p>
+            <textarea id="importTextarea" placeholder="0:00 Intro&#10;0:30 Build Up&#10;1:15 Drop&#10;2:00 Breakdown&#10;2:45 Drop 2"></textarea>
+            <div class="modal-actions">
+                <button class="btn-sm" id="importCancelBtn">Cancel</button>
+                <button class="btn-sm btn-primary" id="importConfirmBtn" style="background:var(--accent);color:#000">Import</button>
+            </div>
+        </div>
+    </div>
+
     <script>
         // =============================================
         // State
@@ -1105,6 +1242,7 @@
         let playerReady = false;
         let chapters = [];
         let currentChapterIndex = -1;
+        let playbackOrigin = -1; // chapter that playback was last started from manually
         let videoDuration = 0;
         let updateInterval = null;
         let apiKey = localStorage.getItem('yt_api_key') || '';
@@ -1224,12 +1362,13 @@
             document.getElementById('timeDisplay').textContent =
                 formatTime(currentTime) + ' / ' + formatTime(videoDuration);
 
-            // Pause at custom chapter end time BEFORE updating highlights
-            if (!cmdActive && currentChapterIndex >= 0) {
+            // Pause at a custom chapter's end only when playback was STARTED
+            // from that custom chapter (playbackOrigin). Passing through it
+            // during normal playback should not interrupt.
+            if (!cmdActive && currentChapterIndex >= 0 && currentChapterIndex === playbackOrigin) {
                 const ch = chapters[currentChapterIndex];
                 if (ch.endTime != null && currentTime >= ch.endTime - 0.3) {
                     player.pauseVideo();
-                    return;
                 }
             }
 
@@ -1516,6 +1655,7 @@
             chapters = chapters.filter(c => c.time < videoDuration);
 
             currentChapterIndex = -1;
+            playbackOrigin = -1;
             renderChapters();
             updateProgress();
             showToast(`Generated ${chapters.length} chapters for ${genre} at ${bpm} BPM`);
@@ -1588,8 +1728,17 @@
                 c.querySelectorAll('.chapter-btn, .custom-chapter-btn').forEach(btn => {
                     btn.addEventListener('click', (e) => {
                         if (e.target.closest('.chapter-action-btn')) return;
+                        if (e.target.closest('.chapter-time-input')) return;
                         const idx = parseInt(btn.dataset.index);
-                        seekToChapter(idx);
+                        seekToChapter(idx, true);
+                    });
+                });
+
+                c.querySelectorAll('.chapter-time').forEach(timeEl => {
+                    timeEl.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        const btn = e.target.closest('.chapter-btn, .custom-chapter-btn');
+                        if (btn) editChapterTime(parseInt(btn.dataset.index));
                     });
                 });
 
@@ -1604,9 +1753,13 @@
             });
         }
 
-        function seekToChapter(index) {
+        function seekToChapter(index, cancelCmd) {
             if (index < 0 || index >= chapters.length) return;
             if (!player || !playerReady) return;
+            if (cancelCmd) {
+                if (cmdActive) stopCommand();
+                playbackOrigin = index;
+            }
             player.seekTo(chapters[index].time, true);
             // Always play after seeking
             if (player.getPlayerState() !== YT.PlayerState.PLAYING) {
@@ -1617,7 +1770,11 @@
         }
 
         function editChapterName(index) {
-            const btn = document.querySelector(`.chapter-btn[data-index="${index}"]`);
+            const isCustom = chapters[index].endTime != null;
+            const btn = isCustom
+                ? document.querySelector(`.custom-chapter-btn[data-index="${index}"]`)
+                : document.querySelector(`.chapter-btn[data-index="${index}"]`);
+            if (!btn) return;
             const row = btn.querySelector('.chapter-name-row');
             const currentName = chapters[index].name;
 
@@ -1647,9 +1804,77 @@
             });
         }
 
+        function editChapterTime(index) {
+            const isCustom = chapters[index].endTime != null;
+            const container = isCustom
+                ? document.querySelector(`.custom-chapter-btn[data-index="${index}"]`)
+                : document.querySelector(`.chapter-btn[data-index="${index}"]`);
+            if (!container) return;
+            const timeDiv = container.querySelector('.chapter-time');
+            if (!timeDiv) return;
+            const endTime = getChapterEndTime(index);
+            const currentTime = `${formatTime(chapters[index].time)} — ${formatTime(endTime)}`;
+
+            timeDiv.style.display = 'none';
+            const input = document.createElement('input');
+            input.type = 'text';
+            input.className = 'chapter-time-input';
+            input.value = currentTime;
+            input.placeholder = 'e.g. 0:30 or 0:00 - 0:20';
+            timeDiv.parentNode.insertBefore(input, timeDiv.nextSibling);
+            input.focus();
+            input.select();
+
+            let finished = false;
+            const finish = () => {
+                if (finished) return;
+                finished = true;
+                const raw = input.value.trim();
+                let startTime = null;
+                let endTime = null;
+
+                const rangeMatch = raw.match(/^(.+?)\s*[-–]\s*(.+)$/);
+                if (rangeMatch) {
+                    startTime = parseTime(rangeMatch[1]);
+                    endTime = parseTime(rangeMatch[2]);
+                } else {
+                    startTime = parseTime(raw);
+                }
+
+                if (startTime !== null && startTime >= 0) {
+                    chapters[index].time = startTime;
+
+                    if (endTime !== null && endTime > startTime) {
+                        if (isCustom) {
+                            chapters[index].endTime = endTime;
+                        } else if (index < chapters.length - 1) {
+                            chapters[index + 1].time = endTime;
+                        } else {
+                            chapters[index].endTime = endTime;
+                        }
+                    }
+
+                    chapters.sort((a, b) => a.time - b.time);
+                    currentChapterIndex = -1;
+                    playbackOrigin = -1;
+                    renderChapters();
+                    showToast(`Time updated`);
+                } else {
+                    renderChapters();
+                }
+            };
+
+            input.addEventListener('blur', finish);
+            input.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') finish();
+                if (e.key === 'Escape') renderChapters();
+            });
+        }
+
         function deleteChapter(index) {
             chapters.splice(index, 1);
             if (currentChapterIndex >= chapters.length) currentChapterIndex = chapters.length - 1;
+            playbackOrigin = -1;
             renderChapters();
         }
 
@@ -1809,9 +2034,56 @@
             });
         }
 
+        function openImportModal() {
+            const modal = document.getElementById('importModal');
+            const textarea = document.getElementById('importTextarea');
+            modal.classList.add('visible');
+            textarea.value = '';
+            textarea.focus();
+        }
+
+        function closeImportModal() {
+            document.getElementById('importModal').classList.remove('visible');
+        }
+
+        function importChapters() {
+            const textarea = document.getElementById('importTextarea');
+            const text = textarea.value.trim();
+            if (!text) {
+                showToast('Nothing to import');
+                return;
+            }
+
+            const lines = text.split('\n').filter(l => l.trim());
+            let imported = 0;
+
+            for (const line of lines) {
+                const match = line.match(/^(\d{1,2}:\d{2}(?::\d{2})?)\s+(.+)$/);
+                if (!match) continue;
+                const time = parseTime(match[1]);
+                if (time === null) continue;
+                const name = match[2].trim();
+                chapters.push({ name, time });
+                imported++;
+            }
+
+            if (imported === 0) {
+                showToast('No valid chapters found');
+                return;
+            }
+
+            chapters.sort((a, b) => a.time - b.time);
+            currentChapterIndex = -1;
+            playbackOrigin = -1;
+            renderChapters();
+            closeImportModal();
+            showToast(`Imported ${imported} chapter${imported > 1 ? 's' : ''}`);
+        }
+
         function clearChapters() {
             chapters = [];
             currentChapterIndex = -1;
+            playbackOrigin = -1;
             renderChapters();
         }
 
@@ -1857,7 +2129,19 @@
         document.getElementById('setEndBtn').addEventListener('click', setMarkerEnd);
         document.getElementById('addChapterBtn').addEventListener('click', addChapterFromMarkers);
         document.getElementById('exportBtn').addEventListener('click', exportChapters);
+        document.getElementById('importBtn').addEventListener('click', openImportModal);
+        document.getElementById('importConfirmBtn').addEventListener('click', importChapters);
+        document.getElementById('importCancelBtn').addEventListener('click', closeImportModal);
+        document.getElementById('importModal').addEventListener('click', (e) => {
+            if (e.target === e.currentTarget) closeImportModal();
+        });
         document.getElementById('clearBtn').addEventListener('click', clearChapters);
+
+        // Import modal Escape key
+        document.getElementById('importTextarea').addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') closeImportModal();
+            if (e.key === 'Enter' && e.ctrlKey) importChapters();
+        });
 
         // Speed controls
         document.getElementById('speedControls').addEventListener('click', (e) => {
@@ -1892,9 +2176,12 @@
         // Progress bar seek
         document.getElementById('progressBar').addEventListener('click', (e) => {
             if (!player || !playerReady || !videoDuration) return;
+            if (cmdActive) stopCommand();
             const rect = e.currentTarget.getBoundingClientRect();
             const pct = (e.clientX - rect.left) / rect.width;
             player.seekTo(pct * videoDuration, true);
+            updateActiveChapter(pct * videoDuration);
+            playbackOrigin = currentChapterIndex;
         });
 
         // =============================================
@@ -1909,7 +2196,7 @@
                 const idx = parseInt(e.key) - 1;
                 if (idx < chapters.length) {
                     e.preventDefault();
-                    seekToChapter(idx);
+                    seekToChapter(idx, true);
                 }
                 return;
             }
@@ -1936,11 +2223,11 @@
                     break;
                 case 'ArrowLeft':
                     e.preventDefault();
-                    if (currentChapterIndex > 0) seekToChapter(currentChapterIndex - 1);
+                    if (currentChapterIndex > 0) seekToChapter(currentChapterIndex - 1, true);
                     break;
                 case 'ArrowRight':
                     e.preventDefault();
-                    if (currentChapterIndex < chapters.length - 1) seekToChapter(currentChapterIndex + 1);
+                    if (currentChapterIndex < chapters.length - 1) seekToChapter(currentChapterIndex + 1, true);
                     break;
             }
         });
@@ -2201,10 +2488,10 @@
                     if (player && playerReady) player.playVideo();
                     return;
                 case 'next':
-                    if (currentChapterIndex < chapters.length - 1) seekToChapter(currentChapterIndex + 1);
+                    if (currentChapterIndex < chapters.length - 1) seekToChapter(currentChapterIndex + 1, true);
                     return;
                 case 'prev':
-                    if (currentChapterIndex > 0) seekToChapter(currentChapterIndex - 1);
+                    if (currentChapterIndex > 0) seekToChapter(currentChapterIndex - 1, true);
                     return;
                 case 'sequence':
                     startCommandSequence(cmd.queue, cmd.sequenceRepeats);
@@ -2298,6 +2585,8 @@
                         if (act.action === 'stop' && player && playerReady) player.pauseVideo();
                     }
                     stopCommand();
+                    currentChapterIndex = -1;
+                    renderChapterHighlights();
                     showToast('Command sequence complete');
                     return;
                 }
@@ -2313,6 +2602,8 @@
                     }
                 }
                 stopCommand();
+                currentChapterIndex = -1;
+                renderChapterHighlights();
                 showToast('Command sequence complete');
                 return;
             }
@@ -2389,6 +2680,7 @@
             cmdCurrentRep = 0;
             cmdSequenceRepeats = 1;
             cmdSequenceCurrentRep = 0;
+            playbackOrigin = -1;
             if (cmdWatcher) {
                 clearInterval(cmdWatcher);
                 cmdWatcher = null;
@@ -2474,6 +2766,18 @@
             const s = seconds % 60;
             if (h > 0) return `${h}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
             return `${m}:${s.toString().padStart(2, '0')}`;
+        }
+
+        function parseTime(str) {
+            str = str.trim();
+            // Handle range format like "0:00 - 0:20" — extract first time
+            const rangeMatch = str.match(/^(\d{1,2}:\d{2}(?::\d{2})?)/);
+            if (rangeMatch) str = rangeMatch[1];
+            const parts = str.split(':').map(Number);
+            if (parts.some(isNaN)) return null;
+            if (parts.length === 3) return parts[0] * 3600 + parts[1] * 60 + parts[2];
+            if (parts.length === 2) return parts[0] * 60 + parts[1];
+            return null;
         }
 
         function escapeHtml(text) {
